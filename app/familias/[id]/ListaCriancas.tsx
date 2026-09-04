@@ -3,12 +3,7 @@
 import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { AVATARES, Avatar } from '@/components/Avatar'
-import {
-  arquivarCrianca,
-  criarCrianca,
-  desarquivarCrianca,
-  type ResultadoCrianca,
-} from './acoes'
+import { criarCrianca, type ResultadoCrianca } from './acoes'
 
 const INICIAL: ResultadoCrianca = { ok: true }
 
@@ -40,29 +35,27 @@ export function ListaCriancas({
         <p className="py-2 text-sm text-slate-500">{t('nenhuma')}</p>
       ) : (
         <ul className="flex flex-col gap-2">
+          {/* A linha inteira é o link, com seta no fim: sem isso não ficava
+              claro que tocar no nome abre a mesada da criança. Arquivar saiu
+              daqui e foi para a página da própria criança, onde é decisão
+              deliberada e não um botão ao lado do caminho principal. */}
           {criancas.map((crianca) => (
-            <li key={crianca.id} className="flex items-center gap-3">
-              <a href={`/criancas/${crianca.id}`} className="botao flex flex-1 items-center gap-3">
+            <li key={crianca.id}>
+              <a
+                href={`/criancas/${crianca.id}`}
+                className="botao flex items-center gap-3 rounded-2xl px-2 py-2 active:bg-marca-claro"
+              >
                 <Avatar chave={crianca.avatar_key} nome={crianca.name} />
-                <span className="flex flex-col">
+                <span className="flex flex-1 flex-col">
                   <span className="font-semibold">{crianca.name}</span>
                   {crianca.archived_at && (
                     <span className="text-xs text-slate-500">{t('arquivada')}</span>
                   )}
                 </span>
+                <span aria-hidden className="text-2xl text-slate-300">
+                  ›
+                </span>
               </a>
-              {/* Arquivar, nunca apagar: o histórico continua legível e a
-                  policy de escrita já recusa lançamento novo. */}
-              <form action={crianca.archived_at ? desarquivarCrianca : arquivarCrianca}>
-                <input type="hidden" name="id" value={crianca.id} />
-                <input type="hidden" name="familyId" value={familyId} />
-                <button
-                  type="submit"
-                  className="rounded-2xl border-2 border-slate-200 px-3 py-2 text-xs font-bold text-slate-600"
-                >
-                  {crianca.archived_at ? t('desarquivar') : t('arquivar')}
-                </button>
-              </form>
             </li>
           ))}
         </ul>

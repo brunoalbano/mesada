@@ -4,10 +4,12 @@ import { clienteServidor } from '@/lib/supabase/server'
 import { formatarCentavos } from '@/lib/money'
 import { Avatar } from '@/components/Avatar'
 import { Cofrinho, estadoPorProgresso } from '@/components/Cofrinho'
+import { sugerirMotivos } from '@/lib/sugestoes'
 import { FormularioLancamento } from './FormularioLancamento'
 import { Historico } from './Historico'
 import { PainelMeta } from './PainelMeta'
 import { PainelAcesso } from './PainelAcesso'
+import { BotaoArquivar } from './BotaoArquivar'
 
 export default async function Crianca({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -24,12 +26,13 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
   // claim child_id. Ausência de linha é 404, sem checagem no código.
   const { data: crianca } = await supabase
     .from('children')
-    .select('id, name, avatar_key, ui_mode, archived_at, family_id, families(currency)')
+    .select('id, name, avatar_key, ui_mode, archived_at, family_id, families(name, currency)')
     .eq('id', id)
     .maybeSingle()
   if (!crianca) notFound()
 
-  const moeda = (crianca.families as unknown as { currency: string } | null)?.currency ?? 'BRL'
+  const familia = crianca.families as unknown as { name: string; currency: string } | null
+  const moeda = familia?.currency ?? 'BRL'
   const pequeno = crianca.ui_mode === 'pequeno'
 
   const [{ data: saldo }, { data: meta }, { data: lancamentos }] = await Promise.all([
@@ -84,9 +87,30 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 py-8">
-      <header className="flex items-center gap-3">
-        <Avatar chave={crianca.avatar_key} nome={crianca.name} />
-        <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{crianca.name}</h1>
+      <header className="flex flex-col gap-2">
+        {/* Voltar explícito, e não só o gesto do navegador: instalado como
+            PWA não existe barra de endereços, e o gesto de voltar do sistema
+            some junto. */}
+        {souResponsavel && (
+          <a
+            href={`/familias/${crianca.family_id}`}
+            className="botao -ml-2 flex items-center gap-1 self-start rounded-2xl px-2 py-2 text-sm font-bold text-marca-escuro"
+          >
+            <span aria-hidden className="text-lg">
+              ‹
+            </span>
+            {familia?.name ?? t('voltar')}
+          </a>
+        )}
+        <div className="flex items-center gap-3">
+          <Avatar chave={crianca.avatar_key} nome={crianca.name} />
+          <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{crianca.name}</h1>
+          {crianca.archived_at && (
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+              {t('arquivada')}
+            </span>
+          )}
+        </div>
       </header>
 
       <section className="flex flex-col items-center gap-2 rounded-3xl bg-white p-6 shadow-sm">
@@ -103,19 +127,37 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
         </p>
       </section>
 
-      <PainelMeta
-        childId={crianca.id}
-        meta={meta ?? null}
-        saldoCentavos={centavos}
-        moeda={moeda}
-        podeEditar={Boolean(souResponsavel)}
-        pequeno={pequeno}
-      />
+      {/* Meta existente fica junto do saldo: ali ela é status, e é a primeira
+          coisa que a criança quer ver. O formulário de criação vai depois do
+          lançamento, porque criar meta é tarefa ocasional do responsável, e
+          lançar é o que ele faz toda semana. */}
+      {meta && (
+        <PainelMeta
+          childId={crianca.id}
+          meta={meta}
+          saldoCentavos={centavos}
+          moeda={moeda}
+          podeEditar={Boolean(souResponsavel)}
+          pequeno={pequeno}
+        />
+      )}
 
       {souResponsavel && (
         <FormularioLancamento
           childId={crianca.id}
           arquivada={Boolean(crianca.archived_at)}
+          pequeno={pequeno}
+          sugestoes={sugerirMotivos(lancamentos ?? [])}
+        />
+      )}
+
+      {!meta && (
+        <PainelMeta
+          childId={crianca.id}
+          meta={null}
+          saldoCentavos={centavos}
+          moeda={moeda}
+          podeEditar={Boolean(souResponsavel)}
           pequeno={pequeno}
         />
       )}
@@ -131,6 +173,14 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
         podeEstornar={Boolean(souResponsavel)}
         pequeno={pequeno}
       />
+
+      {souResponsavel && (
+        <BotaoArquivar
+          childId={crianca.id}
+          familyId={crianca.family_id}
+          arquivada={Boolean(crianca.archived_at)}
+        />
+      )}
     </main>
   )
 }

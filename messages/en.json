@@ -90,7 +90,7 @@
     "lancando": "Saving…",
     "valorInvalido": "Enter an amount greater than zero.",
     "motivoInvalido": "Write a short reason.",
-    "arquivada": "This child is archived.",
+    "arquivada": "Archived",
     "historico": "History",
     "semLancamentos": "Nothing here yet.",
     "estornar": "Undo",
@@ -104,7 +104,8 @@
     "metaFalta": "{valor} to go",
     "metaAlcancada": "You did it!",
     "metaJaExiste": "There is already a goal in progress.",
-    "cancelarMeta": "Cancel goal"
+    "cancelarMeta": "Cancel goal",
+    "voltar": "Back"
   },
   "acesso": {
     "titulo": "{nome}'s access",

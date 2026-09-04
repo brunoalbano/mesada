@@ -175,6 +175,7 @@ export async function arquivarCrianca(dados: FormData): Promise<void> {
     .eq('id', id.data)
 
   revalidatePath(`/familias/${familyId.data}`)
+  revalidatePath(`/criancas/${id.data}`)
 }
 
 export async function desarquivarCrianca(dados: FormData): Promise<void> {
@@ -186,4 +187,5 @@ export async function desarquivarCrianca(dados: FormData): Promise<void> {
   await supabase.from('children').update({ archived_at: null }).eq('id', id.data)
 
   revalidatePath(`/familias/${familyId.data}`)
+  revalidatePath(`/criancas/${id.data}`)
 }

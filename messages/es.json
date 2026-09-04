@@ -90,7 +90,7 @@
     "lancando": "Guardando…",
     "valorInvalido": "Escribe un monto mayor que cero.",
     "motivoInvalido": "Escribe un motivo corto.",
-    "arquivada": "Este niño está archivado.",
+    "arquivada": "Archivado",
     "historico": "Historial",
     "semLancamentos": "Todavía no hay nada.",
     "estornar": "Revertir",
@@ -104,7 +104,8 @@
     "metaFalta": "Faltan {valor}",
     "metaAlcancada": "¡Lo lograste!",
     "metaJaExiste": "Ya hay una meta en curso.",
-    "cancelarMeta": "Cancelar meta"
+    "cancelarMeta": "Cancelar meta",
+    "voltar": "Volver"
   },
   "acesso": {
     "titulo": "Acceso de {nome}",

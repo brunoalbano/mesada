@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { MoedaCaindo } from '@/components/MoedaCaindo'
+import { emojiDoMotivo, type Sugestao } from '@/lib/sugestoes'
 import { lancar, type ResultadoLancamento } from './acoes'
 
 const INICIAL: ResultadoLancamento = { ok: true }
@@ -12,22 +13,37 @@ export function FormularioLancamento({
   childId,
   arquivada,
   pequeno,
+  sugestoes,
 }: {
   childId: string
   arquivada: boolean
   pequeno: boolean
+  sugestoes: Sugestao[]
 }) {
   const t = useTranslations('crianca')
   const tComum = useTranslations('comum')
   const [resultado, enviar, pendente] = useActionState(lancar, INICIAL)
   const [emoji, setEmoji] = useState<string>('💰')
+  const [motivo, setMotivo] = useState('')
+
+  // Escolher um motivo já usado traz de volta o ícone daquela vez. Digitar o
+  // mesmo texto à mão faz o mesmo: quem repete "Sorvete" não deveria ter que
+  // reescolher 🍦 toda semana.
+  function usarMotivo(texto: string) {
+    setMotivo(texto)
+    const conhecido = emojiDoMotivo(sugestoes, texto)
+    if (conhecido) setEmoji(conhecido)
+  }
   const [moedas, setMoedas] = useState(0)
 
   // Dispara a moeda quando um lançamento entra de fato. Amarrado ao resultado
   // da ação, e não ao clique: animar antes de saber se deu certo mente para a
   // criança.
   useEffect(() => {
-    if (resultado.ok && !pendente) setMoedas((n) => n + 1)
+    if (resultado.ok && !pendente) {
+      setMoedas((n) => n + 1)
+      setMotivo('')
+    }
   }, [resultado, pendente])
 
   if (arquivada) {
@@ -77,10 +93,37 @@ export function FormularioLancamento({
           name="motivo"
           required
           maxLength={200}
+          list="motivos-usados"
+          autoComplete="off"
+          value={motivo}
+          onChange={(evento) => usarMotivo(evento.target.value)}
           placeholder={t('motivoPlaceholder')}
           className="min-h-12 rounded-2xl border-2 border-slate-200 px-4 text-base outline-none focus:border-marca"
         />
+        <datalist id="motivos-usados">
+          {sugestoes.map((sugestao) => (
+            <option key={sugestao.motivo} value={sugestao.motivo} />
+          ))}
+        </datalist>
       </label>
+
+      {/* Além do datalist: no celular, tocar num atalho é mais rápido do que
+          digitar e esperar o navegador sugerir. */}
+      {sugestoes.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {sugestoes.map((sugestao) => (
+            <button
+              key={sugestao.motivo}
+              type="button"
+              onClick={() => usarMotivo(sugestao.motivo)}
+              className="flex min-h-12 items-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-semibold text-slate-700"
+            >
+              <span aria-hidden>{sugestao.emoji ?? '💬'}</span>
+              {sugestao.motivo}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {MOTIVOS.map((opcao) => (
