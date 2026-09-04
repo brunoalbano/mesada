@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { abrirSessao } from './sessao'
 
 /**
  * Fluxo completo do responsável, com sessão de verdade contra o banco de
@@ -10,28 +11,36 @@ import { expect, test } from '@playwright/test'
  * "Auto Confirm User" marcado, e exporte:
  *
  *   E2E_EMAIL, E2E_SENHA
+ *
+ * Não roda em ambiente com proxy de saída obrigatório: o servidor Next valida
+ * a sessão chamando o Supabase pelo `fetch` do Node, que ignora HTTP_PROXY e
+ * HTTPS_PROXY. Sem alcançar o Auth, o servidor trata a requisição como
+ * anônima e manda para a entrada — sem erro visível, o que torna o sintoma
+ * difícil de ler. O helper de sessão tem uma saída por curl para o próprio
+ * login, mas o servidor não tem.
  */
 const EMAIL = process.env.E2E_EMAIL
 const SENHA = process.env.E2E_SENHA
+const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL
+const CHAVE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-test.skip(!EMAIL || !SENHA, 'defina E2E_EMAIL e E2E_SENHA para rodar este fluxo')
+test.skip(
+  !EMAIL || !SENHA || !URL_SUPABASE || !CHAVE,
+  'defina E2E_EMAIL, E2E_SENHA e as variáveis do Supabase para rodar este fluxo',
+)
 
-test('do login ao lançamento, passando por família, criança e meta', async ({ page }) => {
-  // Entrar por senha, e não por magic link: o teste não tem caixa de entrada.
-  await page.goto('/entrar')
-  await page.evaluate(
-    async ([email, senha]) => {
-      const { createBrowserClient } = await import(
-        /* webpackIgnore: true */ 'https://esm.sh/@supabase/ssr@0.5.2'
-      )
-      const cliente = createBrowserClient(
-        (window as never as { __URL: string }).__URL,
-        (window as never as { __CHAVE: string }).__CHAVE,
-      )
-      await cliente.auth.signInWithPassword({ email: email!, password: senha! })
-    },
-    [EMAIL, SENHA],
-  )
+// O dispositivo padrão do Playwright manda Accept-Language en-US, e a interface
+// obedece. Fixar o idioma aqui deixa o teste falar do produto, e não do
+// emulador; o idioma em si é testado em publico.spec.ts.
+test.use({ locale: 'pt-BR', extraHTTPHeaders: { 'Accept-Language': 'pt-BR,pt;q=0.9' } })
+
+test('do login ao lançamento, passando por família, criança e estorno', async ({ page, context }) => {
+  await abrirSessao(context, {
+    url: URL_SUPABASE!,
+    chave: CHAVE!,
+    email: EMAIL!,
+    senha: SENHA!,
+  })
 
   await page.goto('/')
 

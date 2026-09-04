@@ -43,6 +43,8 @@ Se a máquina já tem um Chromium do Playwright, aponte para ele em vez de baixa
 CHROMIUM_PATH=/caminho/para/chrome npm run test:e2e
 ```
 
+O fluxo autenticado não roda em ambiente com proxy de saída obrigatório: o servidor Next valida a sessão chamando o Supabase pelo `fetch` do Node, que ignora `HTTP_PROXY` e `HTTPS_PROXY`. O sintoma é enganoso — a página vai para `/entrar` como se a sessão não existisse, sem erro nenhum.
+
 ## Banco de dados
 
 Migrations em `supabase/migrations/`, aplicadas em ordem por nome. A suíte de fumaça prova o que os documentos afirmam: isolamento entre famílias, razão imutável, estorno correto, ciclo da meta e validade do link.
