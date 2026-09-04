@@ -47,11 +47,28 @@ checar() {
   fi
 }
 
+# Devolve o token, ou imprime o motivo exato da recusa e devolve vazio.
+# Diagnosticar por conta importa: "não consegui entrar com as duas" esconde
+# qual das duas está errada, que é a única informação útil.
 entrar() {
-  curl -s --max-time 20 -X POST -H "apikey: $K" -H "Content-Type: application/json" \
+  local resposta
+  resposta=$(curl -s --max-time 20 -X POST -H "apikey: $K" -H "Content-Type: application/json" \
     -d "{\"email\":\"$1\",\"password\":\"$2\"}" \
-    "$B/auth/v1/token?grant_type=password" |
-    python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))"
+    "$B/auth/v1/token?grant_type=password")
+
+  local token
+  token=$(echo "$resposta" | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
+
+  if [ -z "$token" ]; then
+    local motivo
+    motivo=$(echo "$resposta" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(d.get('error_code') or d.get('msg') or d.get('error_description') or 'resposta inesperada')
+" 2>/dev/null || echo 'resposta ilegível')
+    echo "  $1: $motivo" >&2
+  fi
+  echo "$token"
 }
 
 req() { # req <token> <método> <caminho> [corpo]
@@ -79,11 +96,21 @@ print(json.loads(base64.urlsafe_b64decode(s)).get('$1', ''))
 "; }
 uuid() { python3 -c "import uuid;print(uuid.uuid4())"; }
 
+echo "abrindo sessões"
 TA=$(entrar "$EMAIL_A" "$SENHA_A")
 TB=$(entrar "$EMAIL_B" "$SENHA_B")
+
 if [ -z "$TA" ] || [ -z "$TB" ]; then
-  echo "Não consegui entrar com as duas contas."
-  echo "Confira e-mail e senha, e se as contas estão confirmadas."
+  echo ""
+  echo "Não consegui abrir as duas sessões:"
+  [ -z "$TA" ] && echo "  EMAIL_A ($EMAIL_A) falhou" || echo "  EMAIL_A ($EMAIL_A) ok"
+  [ -z "$TB" ] && echo "  EMAIL_B ($EMAIL_B) falhou" || echo "  EMAIL_B ($EMAIL_B) ok"
+  echo ""
+  echo "invalid_credentials  = e-mail ou senha errados, ou a conta não existe"
+  echo "email_not_confirmed  = crie a conta com 'Auto Confirm User' marcado"
+  echo "                       ou confirme em Authentication > Users > ... > Confirm"
+  echo ""
+  echo "Contas em: $B → painel → Authentication → Users"
   exit 1
 fi
 echo "duas sessões abertas"
