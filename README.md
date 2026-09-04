@@ -58,6 +58,22 @@ Cria os Environments `desenvolvimento` e `producao`, exige aprovação humana em
 
 O lado da Vercel já está em `vercel.json`: `main` não dispara deploy automático, porque produção sai por tag.
 
+## Verificar contra um projeto real
+
+`scripts/db-test.sh` prova as regras contra Postgres local. Contra um projeto Supabase de verdade entram coisas que o local não tem: PostgREST, o hook do JWT, os grants da plataforma, e a RLS avaliada com um token emitido pelo Auth.
+
+```bash
+export SUPABASE_URL='https://<ref>.supabase.co'
+export SUPABASE_ANON_KEY='sb_publishable_...'
+export EMAIL_A='mae@exemplo.dev'  SENHA_A='...'
+export EMAIL_B='pai@exemplo.dev'  SENHA_B='...'
+scripts/verificar-ambiente.sh
+```
+
+Precisa de duas contas já confirmadas. Crie-as no painel, em **Authentication → Users → Add user**, com **Auto Confirm User** marcado — assim a confirmação de e-mail continua exigida para todo mundo, que é o padrão certo.
+
+**Só contra desenvolvimento.** O script cria família, criança e lançamentos.
+
 ## Segredos
 
 Nenhuma chave entra no repositório. `.env.local` fica só na máquina de quem desenvolve, e em produção os valores vivem nas variáveis de ambiente da Vercel, separados por ambiente.

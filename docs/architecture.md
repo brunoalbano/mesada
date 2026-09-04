@@ -629,6 +629,12 @@ Conexão pelo **session pooler, porta 5432**. O pooler de transação (6543) nã
 
 Supabase Free **não tem backup nem PITR**. Como o produto promete histórico imutável, isso é inaceitável sem contrapartida: GitHub Action semanal roda `supabase db dump`, cifra o resultado e guarda como artefato privado com retenção de 90 dias. O procedimento de restauração é testado uma vez antes do lançamento e documentado em `docs/runbook.md`.
 
+### 9.3.1 Confirmação de e-mail
+
+Ligada nos dois ambientes. Sem ela, qualquer pessoa cria conta com o e-mail de outra, e num produto que guarda dado de criança a conveniência de teste não paga esse preço.
+
+Consequência prática: não dá para criar conta de teste por script, porque não há caixa de entrada. Contas de teste são criadas no painel, em Authentication → Users → Add user, com *Auto Confirm User* — o que confirma aquela conta sem afrouxar a regra para as demais. É assim que `scripts/verificar-ambiente.sh` roda.
+
 ### 9.4 Ambientes
 
 Dois ambientes, cada um com o próprio projeto Supabase e o próprio banco. Nenhum dado de produção em desenvolvimento.
