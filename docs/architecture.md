@@ -685,7 +685,13 @@ O ambiente de desenvolvimento existe para que uma migration seja executada contr
 
 O Environment `producao` no GitHub tem *required reviewers*, então a tag pausa e espera aprovação humana antes de tocar o banco de produção. Isso não é cerimônia: produção não tem PITR no plano gratuito (seção 9.3), e o dump semanal pode estar sete dias atrás.
 
-**Consequência para a Vercel:** desligue o deploy automático de produção pela integração de Git, senão um merge em `main` publicaria por fora do fluxo por tag. Em Settings → Git, aponte a Production Branch para uma branch que não existe, ou use o Ignored Build Step. Preview por branch continua ligado.
+**Consequência para a Vercel:** o deploy automático de produção fica desligado, senão um merge em `main` publicaria por fora do fluxo por tag. Isso está em `vercel.json`, versionado, e não no painel:
+
+```json
+{ "git": { "deploymentEnabled": { "main": false } } }
+```
+
+Branch não citada continua com preview automático; só `main` para de disparar. Deploy pela CLI, que é o do workflow por tag, continua funcionando.
 
 **Terceiro ambiente**, se algum dia for preciso: Supabase local por Docker (`supabase start`). Não consome a cota gratuita, e é o mesmo caminho de quem for contribuir com o projeto sem acesso aos projetos gerenciados.
 

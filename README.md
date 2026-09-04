@@ -46,6 +46,18 @@ scripts/db-test.sh          # recria um banco descartável, aplica tudo e testa
 
 O script precisa de um Postgres local. `supabase/tests/00_local_shim.sql` reproduz o mínimo do ambiente Supabase (schema `auth`, `auth.uid()`, roles e privilégios padrão) e **não** é aplicado em produção.
 
+## Configurar o deploy
+
+Uma vez por repositório, na sua máquina, com o `gh` autenticado:
+
+```bash
+scripts/setup-github.sh
+```
+
+Cria os Environments `desenvolvimento` e `producao`, exige aprovação humana em produção, restringe produção a tags `v*`, e pede os segredos interativamente, sem eco e sem passar por argumento.
+
+O lado da Vercel já está em `vercel.json`: `main` não dispara deploy automático, porque produção sai por tag.
+
 ## Segredos
 
 Nenhuma chave entra no repositório. `.env.local` fica só na máquina de quem desenvolve, e em produção os valores vivem nas variáveis de ambiente da Vercel, separados por ambiente.
