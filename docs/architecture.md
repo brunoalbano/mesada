@@ -673,6 +673,13 @@ O passo 3 nunca roda antes do 2 ter passado. Uma migration destrutiva exige apro
 
 **Terceiro ambiente**, se algum dia for preciso: Supabase local por Docker (`supabase start`). Não consome a cota gratuita, e é o mesmo caminho de quem for contribuir com o projeto sem acesso aos projetos gerenciados.
 
+**Branching do Supabase foi considerado e recusado**, por dois motivos independentes:
+
+1. É recurso do plano Pro. O plano gratuito não tem branching, e o princípio 4 é custo zero de operação.
+2. Mesmo pago, branch e ambiente resolvem problemas diferentes. Uma preview branch é efêmera: nasce com o pull request, é recriada a partir das migrations e morre no merge. Um ambiente de desenvolvimento precisa do contrário — a família de teste cadastrada ontem tem de continuar lá hoje. E produção nunca é branch, em plano nenhum.
+
+Ou seja, branching não substituiria nenhum dos dois projetos; substituiria o Docker local, que já faz esse papel de graça. Se o projeto migrar para Pro, branching entra como terceira camada, para preview por pull request, ao lado dos dois projetos permanentes. O custo é por hora de compute (a ordem de grandeza é de centavos por pull request curto, e de quase um projeto inteiro se uma branch ficar de pé o mês todo), e o crédito de compute do Pro não cobre branching.
+
 **Seed de desenvolvimento**: `supabase/seed.sql` cria duas famílias, três crianças, lançamentos e uma meta, para que o ambiente de desenvolvimento tenha o que mostrar sem digitação manual. Nunca é aplicado em produção.
 
 ---
