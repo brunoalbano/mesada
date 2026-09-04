@@ -8,9 +8,20 @@ import { cookies } from 'next/headers'
 export async function clienteServidor() {
   const armazem = await cookies()
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const chave = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !chave) {
+    // Mensagem que diz o que fazer, em vez de um erro sobre URL inválida
+    // vindo de dentro da biblioteca.
+    throw new Error(
+      'Configuração ausente: defina NEXT_PUBLIC_SUPABASE_URL e ' +
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY no ambiente do deploy.',
+    )
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    chave,
     {
       cookies: {
         getAll: () => armazem.getAll(),

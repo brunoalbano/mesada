@@ -12,9 +12,27 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   let resposta = NextResponse.next({ request })
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const chave = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // Sem configuração, seguir sem renovar a sessão. O usuário cai na tela de
+  // entrada, que é ruim, mas legível.
+  //
+  // Antes o middleware lançava aqui, e como ele roda em toda requisição, uma
+  // variável faltando derrubava o site inteiro com MIDDLEWARE_INVOCATION_FAILED
+  // — inclusive páginas que não usam banco nenhum. Um erro de configuração não
+  // deve ter esse alcance.
+  if (!url || !chave) {
+    console.error(
+      'NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY ausente. ' +
+        'Sessões não serão renovadas. Confira as variáveis de ambiente do deploy.',
+    )
+    return resposta
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    chave,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
