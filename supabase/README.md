@@ -29,11 +29,17 @@ Reproduzir os grants do Supabase é essencial: um teste que passa por falta de `
 
 ## Aplicar no Supabase
 
-Requer a CLI instalada e o projeto vinculado (`supabase link --project-ref <ref>`), que cria o `supabase/config.toml`. O repositório não versiona esse arquivo porque a referência do projeto difere entre desenvolvimento e produção.
-
 ```bash
-supabase db push
+export DATABASE_URL='postgresql://postgres.<ref>:<senha>@aws-0-<regiao>.pooler.supabase.com:5432/postgres'
+scripts/db-push.sh              # verifica o alvo e lista o que faria
+scripts/db-push.sh --aplicar    # aplica
 ```
+
+Use o **session pooler, porta 5432**. O pooler de transação (6543) não serve: não mantém estado de sessão, e as migrations dependem de advisory lock e de objetos criados em sequência na mesma conexão. O script recusa a 6543 em vez de falhar no meio.
+
+A senha vai por variável de ambiente, nunca por argumento: argumento aparece no `ps` de qualquer processo da máquina e no histórico do shell.
+
+Alternativa, se preferir a CLI: `supabase link --project-ref <ref>` e depois `supabase db push`. O `supabase/config.toml` que o link cria não é versionado, porque a referência do projeto difere entre desenvolvimento e produção.
 
 Depois, no painel:
 
