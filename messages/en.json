@@ -1,0 +1,42 @@
+{
+  "comum": {
+    "sair": "Sign out",
+    "salvar": "Save",
+    "cancelar": "Cancel",
+    "carregando": "Loading…",
+    "erroInesperado": "Something went wrong. Please try again."
+  },
+  "idioma": {
+    "rotulo": "Language",
+    "pt": "Português",
+    "en": "English",
+    "es": "Español"
+  },
+  "entrar": {
+    "titulo": "Mesada",
+    "subtitulo": "Your kids' allowance, without the notebook or the spreadsheet.",
+    "email": "Your email",
+    "emailPlaceholder": "you@example.com",
+    "enviarLink": "Send me a sign-in link",
+    "enviando": "Sending…",
+    "google": "Continue with Google",
+    "ou": "or",
+    "linkEnviado": "Done! Open the email we just sent to {email}.",
+    "emailInvalido": "That email doesn't look right.",
+    "falhou": "I couldn't send the link. Please try again."
+  },
+  "familias": {
+    "titulo": "Your families",
+    "vazioTitulo": "No family yet",
+    "vazioTexto": "Create a family to start adding children.",
+    "criarTitulo": "New family",
+    "nome": "Family name",
+    "nomePlaceholder": "The Albanos",
+    "criar": "Create family",
+    "criando": "Creating…",
+    "nomeInvalido": "Pick a name between 1 and 60 characters.",
+    "papelOwner": "You manage this",
+    "papelParent": "You're a member",
+    "criancas": "{contagem, plural, =0 {no children} one {# child} other {# children}}"
+  }
+}

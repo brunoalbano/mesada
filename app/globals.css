@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --fonte-titulo: 'Baloo 2', system-ui, sans-serif;
+  --fonte-corpo: 'Nunito', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-marca-claro font-corpo text-slate-900 antialiased;
+    /* Mobile first: o aplicativo é usado no celular, em pé, com uma mão. */
+    text-size-adjust: 100%;
+  }
+
+  /* Alvo de toque mínimo de 48px na interface inteira. */
+  button,
+  [role='button'],
+  a.botao {
+    @apply min-h-12 min-w-12;
+  }
+
+  /* Toda animação tem leitura estática equivalente. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

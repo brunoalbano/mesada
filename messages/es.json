@@ -1,0 +1,42 @@
+{
+  "comum": {
+    "sair": "Salir",
+    "salvar": "Guardar",
+    "cancelar": "Cancelar",
+    "carregando": "Cargando…",
+    "erroInesperado": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "idioma": {
+    "rotulo": "Idioma",
+    "pt": "Português",
+    "en": "English",
+    "es": "Español"
+  },
+  "entrar": {
+    "titulo": "Mesada",
+    "subtitulo": "La mesada de tus hijos, sin cuaderno ni planilla.",
+    "email": "Tu correo",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "enviarLink": "Enviarme un enlace de acceso",
+    "enviando": "Enviando…",
+    "google": "Continuar con Google",
+    "ou": "o",
+    "linkEnviado": "¡Listo! Abre el correo que acabamos de enviar a {email}.",
+    "emailInvalido": "Ese correo no parece correcto.",
+    "falhou": "No pude enviar el enlace. Inténtalo de nuevo."
+  },
+  "familias": {
+    "titulo": "Tus familias",
+    "vazioTitulo": "Todavía no hay familias",
+    "vazioTexto": "Crea una familia para empezar a agregar niños.",
+    "criarTitulo": "Nueva familia",
+    "nome": "Nombre de la familia",
+    "nomePlaceholder": "Familia Albano",
+    "criar": "Crear familia",
+    "criando": "Creando…",
+    "nomeInvalido": "Elige un nombre de 1 a 60 caracteres.",
+    "papelOwner": "Tú administras",
+    "papelParent": "Tú participas",
+    "criancas": "{contagem, plural, =0 {ningún niño} one {# niño} other {# niños}}"
+  }
+}

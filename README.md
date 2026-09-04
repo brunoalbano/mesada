@@ -2,7 +2,7 @@
 
 Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanharem saldo, histórico e a meta de poupança.
 
-**Status: banco implementado e testado. Aplicação ainda não iniciada.**
+**Status: banco pronto e testado. Aplicação com login do responsável e criação de família.**
 
 ## Documentos
 
@@ -20,6 +20,20 @@ Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanha
 - Português, inglês e espanhol, detectados pelo navegador.
 - Hospedagem e banco em planos gratuitos: Next.js na Vercel, Postgres no Supabase.
 
+## Rodar
+
+```bash
+npm install
+cp .env.example .env.local     # preencha com o projeto Supabase de desenvolvimento
+npm run dev
+```
+
+```bash
+npm test          # unidade: dinheiro, idioma, paridade de traduções
+npm run typecheck
+npm run test:db   # banco: 78 asserções mais os testes de concorrência
+```
+
 ## Banco de dados
 
 Migrations em `supabase/migrations/`, aplicadas em ordem por nome. A suíte de fumaça prova o que os documentos afirmam: isolamento entre famílias, razão imutável, estorno correto, ciclo da meta e validade do link.
@@ -27,6 +41,8 @@ Migrations em `supabase/migrations/`, aplicadas em ordem por nome. A suíte de f
 ```bash
 scripts/db-test.sh          # recria um banco descartável, aplica tudo e testa
 ```
+
+`supabase/seed.sql` popula um ambiente de desenvolvimento com duas crianças, histórico e metas. Nunca em produção.
 
 O script precisa de um Postgres local. `supabase/tests/00_local_shim.sql` reproduz o mínimo do ambiente Supabase (schema `auth`, `auth.uid()`, roles e privilégios padrão) e **não** é aplicado em produção.
 
