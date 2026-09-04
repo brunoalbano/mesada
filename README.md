@@ -29,9 +29,18 @@ npm run dev
 ```
 
 ```bash
-npm test          # unidade: dinheiro, idioma, paridade de traduções
+npm test           # unidade: dinheiro, idioma, idade, paridade de traduções
 npm run typecheck
-npm run test:db   # banco: 78 asserções mais os testes de concorrência
+npm run test:db    # banco: 78 asserções mais os testes de concorrência
+npm run test:e2e   # navegador: fluxos críticos, em viewport de celular
+```
+
+Os fluxos de `e2e/publico.spec.ts` não exigem segredo nenhum e rodam em qualquer clone. O de `e2e/responsavel.spec.ts` precisa de uma conta de teste em `E2E_EMAIL` e `E2E_SENHA`, e é pulado sem elas.
+
+Se a máquina já tem um Chromium do Playwright, aponte para ele em vez de baixar outro:
+
+```bash
+CHROMIUM_PATH=/caminho/para/chrome npm run test:e2e
 ```
 
 ## Banco de dados

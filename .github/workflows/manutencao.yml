@@ -1,0 +1,60 @@
+name: Manutenção
+
+# Duas tarefas que, se não existirem, o projeto degrada sozinho e em silêncio.
+on:
+  schedule:
+    # A cada três dias. O Supabase Free pausa o projeto após 7 dias sem
+    # requisição, então três dias dá margem para uma execução falhar.
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  manter-acordado:
+    name: Manter os projetos acordados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Consultar desenvolvimento
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::SUPABASE_DB_URL_DEV não está definido. O projeto de"
+            echo "::error::desenvolvimento vai pausar em 7 dias sem isto."
+            exit 1
+          fi
+          psql "$DATABASE_URL" -tAc "select 'acordado em ' || now()"
+
+      - name: Consultar produção
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::Sem projeto de produção ainda; nada a manter acordado."
+            exit 0
+          fi
+          psql "$DATABASE_URL" -tAc "select 'acordado em ' || now()"
+
+      # O GitHub desativa workflow agendado após 60 dias sem commit no
+      # repositório. Sem este passo, a manutenção se desliga sozinha depois de
+      # dois meses quietos, e sete dias depois o banco pausa.
+      - name: Registrar a execução
+        run: |
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > .github/ultima-manutencao
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .github/ultima-manutencao
+          if git diff --cached --quiet; then
+            echo "nada a registrar"
+          else
+            git commit -m 'chore: registra a execução da manutenção
+
+          Mantém o agendamento vivo: o GitHub desativa workflow agendado após
+          60 dias sem commit no repositório.'
+            git push
+          fi

@@ -125,5 +125,10 @@
     "ios": "Toque em Compartilhar e depois em “Adicionar à Tela de Início”.",
     "android": "Toque no menu do navegador e depois em “Instalar aplicativo”.",
     "depois": "Agora não"
+  },
+  "erro": {
+    "titulo": "O cofrinho está dormindo",
+    "texto": "Não consegui falar com o servidor agora. Seu dinheiro está guardado; é só tentar de novo em instantes.",
+    "tentarDeNovo": "Tentar de novo"
   }
 }

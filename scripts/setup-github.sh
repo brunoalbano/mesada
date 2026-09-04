@@ -25,7 +25,15 @@ perguntar() {
 
 gravar() {  # gravar <ambiente> <nome> <valor>
   printf '%s' "$3" | gh secret set "$2" --repo "$REPO" --env "$1"
-  echo "  gravado: $2"
+  echo "  gravado: $2 (ambiente $1)"
+}
+
+# Secret de repositório, sem ambiente. A manutenção e o backup rodam por
+# agendamento, e um job com `environment:` de produção ficaria parado
+# esperando aprovação humana a cada execução — ou seja, nunca rodaria.
+gravar_repo() {  # gravar_repo <nome> <valor>
+  printf '%s' "$2" | gh secret set "$1" --repo "$REPO"
+  echo "  gravado: $1 (repositório)"
 }
 
 echo "Repositório: $REPO"
@@ -43,6 +51,7 @@ case "$url_dev" in
   *:6543/*) echo "Essa é a porta do pooler de transação. Use a 5432."; exit 1 ;;
 esac
 gravar desenvolvimento SUPABASE_DB_URL "$url_dev"
+gravar_repo SUPABASE_DB_URL_DEV "$url_dev"
 
 # --------------------------------------------------------------------------
 echo ""
@@ -75,6 +84,13 @@ if [ -n "${url_prod:-}" ]; then
     exit 1
   fi
   gravar producao SUPABASE_DB_URL "$url_prod"
+  gravar_repo SUPABASE_DB_URL_PROD "$url_prod"
+
+  # Dump em claro num artefato é o banco inteiro disponível para quem tiver
+  # acesso ao repositório.
+  senha_backup=$(perguntar BACKUP_PASSPHRASE \
+    "Senha para cifrar o backup (gere com: openssl rand -base64 32)")
+  gravar_repo BACKUP_PASSPHRASE "$senha_backup"
 fi
 
 for nome in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do

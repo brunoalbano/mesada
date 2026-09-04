@@ -1,0 +1,48 @@
+name: Backup
+
+# O plano gratuito do Supabase não tem backup nem PITR. O produto promete
+# histórico imutável, então guardar uma cópia é obrigação, não zelo extra.
+on:
+  schedule:
+    - cron: '31 4 * * 0'
+  workflow_dispatch:
+
+jobs:
+  copia:
+    name: Copiar o banco de produção
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Gerar e cifrar o dump
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL_PROD }}
+          SENHA: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::Sem projeto de produção ainda; nada a copiar."
+            exit 0
+          fi
+          if [ -z "$SENHA" ]; then
+            echo "::error::BACKUP_PASSPHRASE não está definido."
+            echo "::error::Um dump em claro num artefato é o banco inteiro"
+            echo "::error::disponível para quem tiver acesso ao repositório."
+            exit 1
+          fi
+
+          # --no-owner: restaurar num projeto novo não deve exigir os mesmos
+          # papéis. --clean deixa a restauração idempotente.
+          pg_dump "$DATABASE_URL" --no-owner --clean --if-exists -Fc -f dump.pgcustom
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+              --passphrase "$SENHA" -o dump.pgcustom.gpg dump.pgcustom
+          rm -f dump.pgcustom
+          ls -lh dump.pgcustom.gpg
+
+      - name: Guardar
+        if: hashFiles('dump.pgcustom.gpg') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_id }}
+          path: dump.pgcustom.gpg
+          retention-days: 90

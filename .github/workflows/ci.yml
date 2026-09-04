@@ -34,6 +34,15 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://exemplo.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: chave-de-build
 
+      # Fluxos que não exigem sessão: idioma, redirecionamento, manifesto,
+      # cabeçalhos e a recusa de token malformado. Rodam sem segredo, então
+      # valem também em pull request de quem não tem acesso aos ambientes.
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test e2e/publico.spec.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://exemplo.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: chave-de-build
+
   banco:
     name: Banco
     runs-on: ubuntu-latest

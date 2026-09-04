@@ -125,5 +125,10 @@
     "ios": "Tap Share, then “Add to Home Screen”.",
     "android": "Open the browser menu, then “Install app”.",
     "depois": "Not now"
+  },
+  "erro": {
+    "titulo": "The piggy bank is asleep",
+    "texto": "I couldn't reach the server right now. Your money is safe — just try again in a moment.",
+    "tentarDeNovo": "Try again"
   }
 }

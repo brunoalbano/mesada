@@ -125,5 +125,10 @@
     "ios": "Toca Compartir y luego “Añadir a pantalla de inicio”.",
     "android": "Abre el menú del navegador y luego “Instalar aplicación”.",
     "depois": "Ahora no"
+  },
+  "erro": {
+    "titulo": "La alcancía está durmiendo",
+    "texto": "No pude hablar con el servidor ahora. Tu dinero está guardado; inténtalo de nuevo en un momento.",
+    "tentarDeNovo": "Intentar de nuevo"
   }
 }

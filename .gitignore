@@ -14,5 +14,7 @@ public/swe-worker-*.js
 
 supabase/config.toml
 supabase/.temp/
+test-results/
+playwright-report/
 .vercel
 .DS_Store
