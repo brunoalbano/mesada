@@ -1,24 +1,27 @@
 # Cofrinho — Documento de Arquitetura e Design
 
-**Status:** aprovado
-**Versão:** 1.0
+**Status:** aprovado, revisado
+**Versão:** 2.0
 **Data:** 2026-09-04
 
-Este documento descreve a arquitetura, o modelo de dados, o modelo de autenticação e o sistema de design do aplicativo **Cofrinho**. As decisões de produto que estavam em aberto foram fechadas e estão registradas na seção 8. O repositório continua chamado `mesada`; o produto chama Cofrinho.
+Arquitetura, modelo de dados, autenticação e sistema de design do aplicativo **Cofrinho**. O repositório continua chamado `mesada`; o produto chama Cofrinho.
+
+A versão 2.0 incorpora três revisões independentes (segurança, modelo de dados, consistência e viabilidade). As correções estruturais estão marcadas com **[R]** ao longo do texto, e o registro completo está em `docs/review-2026-09-04.md`.
 
 ---
 
 ## 1. Visão geral do produto
 
-Aplicativo para pais controlarem a mesada dos filhos e para os filhos acompanharem o próprio saldo, o histórico e as metas de poupança.
+Aplicativo para pais controlarem a mesada dos filhos e para os filhos acompanharem o próprio saldo, o histórico e a meta de poupança.
 
 Princípios que guiam todas as decisões técnicas:
 
-1. **Mobile first.** O aplicativo é usado no celular, em pé, com uma mão. O desktop é um caso secundário que deve funcionar, não uma prioridade de design.
-2. **Lúdico e legível por crianças de 4 a 16 anos.** A interface da criança é a interface principal do produto, não um anexo da interface do pai.
-3. **Histórico imutável.** Dinheiro é assunto sério mesmo quando o valor é de dois reais. Nenhum lançamento é apagado ou editado.
+1. **Mobile first.** Usado no celular, em pé, com uma mão. Desktop deve funcionar, não é prioridade de design.
+2. **Lúdico e legível por crianças de 4 a 16 anos.** A interface da criança é a interface principal do produto.
+3. **Histórico imutável.** Nenhum lançamento é apagado ou editado.
 4. **Custo zero de operação.** Somente serviços com plano gratuito permanente.
 5. **Isolamento de dados por família garantido no banco**, não apenas na aplicação.
+6. **Multi-idioma desde o primeiro dia.** Português, inglês e espanhol.
 
 ---
 
@@ -26,42 +29,59 @@ Princípios que guiam todas as decisões técnicas:
 
 | Camada | Escolha | Motivo |
 |---|---|---|
-| Framework | Next.js 15 (App Router, TypeScript, React Server Components) | Um único projeto para interface e API. Deploy trivial. TypeScript é a stack do time. |
-| Hospedagem | Vercel, plano Hobby | Grátis, deploy por push no Git, HTTPS e domínio incluídos, cron incluído. |
-| Banco de dados | Supabase Postgres, plano Free | Postgres gerenciado com Row Level Security. 500 MB de armazenamento, muito acima da necessidade. |
-| Autenticação | Supabase Auth | Google OAuth, magic link por e-mail e sessão anônima. Integra com RLS pelo JWT. |
+| Framework | Next.js 15 (App Router, TypeScript, React Server Components) | Um único projeto para interface e API. TypeScript é a stack do time. |
+| Hospedagem | Vercel, plano Hobby | Grátis, deploy por push, HTTPS e domínio incluídos, cron incluído. |
+| Banco de dados | Supabase Postgres, plano Free | Postgres gerenciado com Row Level Security. 500 MB, muito acima da necessidade. |
+| Autenticação | Supabase Auth | Google OAuth, magic link e sessão anônima. Integra com RLS pelo JWT. |
 | Estilo | Tailwind CSS + shadcn/ui | Rápido, mobile first por padrão, componentes acessíveis. |
-| Animação | Motion (antigo framer-motion) | Micro-interações lúdicas com respeito a `prefers-reduced-motion`. |
-| PWA | Serwist | Sucessor mantido do `next-pwa`. Service worker, manifest, instalação e leitura offline. |
+| Animação | Motion | Micro-interações com respeito a `prefers-reduced-motion`. |
+| PWA | Serwist | Service worker, manifest, instalação e leitura offline. |
+| Idioma | next-intl | Mensagens ICU, detecção por `Accept-Language` no servidor, sem prefixo de idioma na URL. |
 | Validação | Zod | Um único esquema para formulário, Server Action e limites do banco. |
-| Testes | Vitest (unidade) + Playwright (fluxo crítico) | Playwright já está disponível no ambiente. |
+| Testes | Vitest + Playwright | Playwright já disponível no ambiente. |
 
 ### Alternativas consideradas
 
-- **.NET no Azure App Service (plano gratuito):** o time tem experiência em C#, mas o plano gratuito do App Service hiberna, não aceita domínio próprio e não oferece banco relacional gratuito permanente. Custo de operação passa de zero. Recusado.
-- **Cloudflare Workers + D1 + Hono:** excelente custo e latência, mas exige escrever autenticação, OAuth e políticas de acesso à mão. Recusado para o MVP; é a rota de migração natural caso o Supabase deixe de atender.
+- **.NET no Azure App Service gratuito:** o time tem C#, mas o plano gratuito hiberna, não aceita domínio próprio e não oferece banco relacional gratuito permanente. Recusado.
+- **Cloudflare Workers + D1 + Hono:** ótimo custo, mas exige escrever autenticação, OAuth e políticas à mão. Rota de migração natural caso o Supabase deixe de atender.
 
 ### Riscos operacionais conhecidos
 
-- **O projeto Supabase Free é pausado após 7 dias sem requisição.** Mitigação: um GitHub Action agendado faz uma consulta trivial a cada 3 dias.
-- **Vercel Hobby permite cron diário.** Suficiente para mesada recorrente (recurso pós-MVP). Se a granularidade não bastar, usar `pg_cron` no Supabase.
-- **Notificação push em iOS** só funciona depois que o usuário adiciona o aplicativo à tela de início. A tela de onboarding precisa ensinar isso explicitamente.
+- **O projeto Supabase Free é pausado após 7 dias sem requisição.** Mitigação: GitHub Action a cada 3 dias. **[R] Atenção:** o GitHub desativa workflows agendados após 60 dias sem commit no repositório. O workflow precisa fazer também um commit de keep-alive, ou o cron precisa ser externo. Sem isso a mitigação se desliga sozinha depois de dois meses quietos.
+- **[R] Banco pausado precisa de estado degradado.** Quando o banco não responde, o aplicativo mostra a tela "o cofrinho está dormindo", com o último dado em cache, e dispara alerta por e-mail para o responsável técnico. Nunca uma tela de erro crua.
+- **Vercel Hobby permite cron diário.** **[R]** O disparo acontece em algum momento *dentro* da hora especificada, não no minuto exato. Isso importa para a mesada recorrente (pós-MVP): a data do crédito é calculada pela aplicação, nunca pelo instante em que o cron acordou.
+- **[R] Supabase Free permite 2 projetos ativos.** Produção e staging consomem a cota inteira. Decisão: um único projeto de produção; preview deploys apontam para um banco local em Docker ou para o mesmo projeto com dados de teste isolados por família.
+- **[R] Supabase Free não tem backup nem PITR.** Ver seção 10.
+- **Push em iOS** só funciona depois de adicionar à tela de início. **[R]** Instalações na União Europeia perderam PWA em modo standalone e push por causa do DMA; considerar ao avaliar alcance.
 
 ---
 
 ## 3. Modelo de dados
 
-Todos os valores monetários são armazenados como **inteiros em centavos** (`bigint`). Ponto flutuante nunca é usado para dinheiro. Todos os carimbos de tempo são `timestamptz`; a apresentação converte para `America/Sao_Paulo`.
+Valores monetários são **inteiros em centavos** (`bigint`). Ponto flutuante nunca é usado para dinheiro. Carimbos de tempo são `timestamptz`; a apresentação converte para o fuso da família.
 
 ### 3.1 Tabelas
 
 ```sql
 -- Pais e responsáveis vêm de auth.users (Supabase Auth).
 
+-- [R] auth.users não é legível pelo cliente. Sem esta tabela, "qual responsável
+-- lançou" não tem fonte. Populada por trigger em auth.users.
+profiles (
+  user_id       uuid primary key references auth.users(id) on delete cascade,
+  display_name  text not null,
+  avatar_url    text,
+  locale        text check (locale in ('pt', 'en', 'es')),
+  updated_at    timestamptz not null default now()
+)
+
 families (
-  id            uuid primary key,
+  id            uuid primary key default gen_random_uuid(),
   name          text not null,
-  created_by    uuid not null references auth.users(id),
+  currency      char(3) not null default 'BRL',              -- [R] estava só na prosa
+  locale        text not null default 'pt' check (locale in ('pt', 'en', 'es')),
+  timezone      text not null default 'America/Sao_Paulo',   -- [R] mesada recorrente precisa
+  created_by    uuid references auth.users(id) on delete set null,
   created_at    timestamptz not null default now()
 )
 
@@ -74,74 +94,107 @@ family_members (
 )
 
 children (
-  id            uuid primary key,
+  id            uuid primary key default gen_random_uuid(),
   family_id     uuid not null references families(id) on delete cascade,
   name          text not null,             -- apelido, não nome completo
-  avatar_key    text not null,             -- chave de avatar ilustrado, nunca foto
-  birthdate     date,                      -- opcional, define o modo de interface
-  ui_mode       text check (ui_mode in ('pequeno', 'grande')), -- sobrescreve a idade
+  avatar_key    text not null,
+  birthdate     date,                      -- opcional
+  ui_mode       text not null default 'pequeno'
+                check (ui_mode in ('pequeno', 'grande')),    -- [R] tinha ficado sem padrão
+  locale        text check (locale in ('pt', 'en', 'es')),   -- nulo herda o da família
   archived_at   timestamptz,
   created_at    timestamptz not null default now()
 )
 
+-- [R] access_token_id liga a identidade ao link que a criou. Sem isso, revogar
+-- o link não derruba a sessão que ele gerou. Ver seção 4.5.
 child_identities (
-  child_id      uuid not null references children(id) on delete cascade,
-  auth_user_id  uuid not null references auth.users(id) on delete cascade unique,
-  provider      text not null check (provider in ('google', 'email', 'link')),
-  linked_at     timestamptz not null default now(),
-  primary key (child_id, auth_user_id)
+  child_id        uuid not null references children(id) on delete cascade,
+  auth_user_id    uuid not null references auth.users(id) on delete cascade unique,
+  provider        text not null check (provider in ('google', 'email', 'link')),
+  access_token_id uuid references access_tokens(id) on delete cascade,
+  revoked_at      timestamptz,
+  linked_at       timestamptz not null default now(),
+  primary key (child_id, auth_user_id),
+  constraint link_identity_has_token
+    check ((provider = 'link') = (access_token_id is not null))
 )
 
 access_tokens (
-  id            uuid primary key,
+  id            uuid primary key default gen_random_uuid(),
   child_id      uuid not null references children(id) on delete cascade,
-  token_hash    bytea not null unique,     -- SHA-256 do token; o token em claro nunca é salvo
-  label         text,                      -- "tablet da sala", "celular da avó"
-  can_request   boolean not null default false,
-  expires_at    timestamptz not null,   -- padrão de 365 dias
+  token_hash    bytea not null unique,     -- [R] HMAC-SHA256(token, PEPPER), ver 4.5
+  label         text,
+  can_request   boolean not null default false,   -- dormente até o pós-MVP
+  expires_at    timestamptz not null,             -- padrão de 365 dias
   revoked_at    timestamptz,
   last_used_at  timestamptz,
-  created_by    uuid not null references auth.users(id),
+  failed_count  int not null default 0,           -- [R] limite de taxa, ver 4.5
+  created_by    uuid references auth.users(id) on delete set null,
   created_at    timestamptz not null default now()
 )
 
 invites (
-  id            uuid primary key,
+  id            uuid primary key default gen_random_uuid(),
   family_id     uuid not null references families(id) on delete cascade,
   kind          text not null check (kind in ('parent', 'child')),
-  child_id      uuid references children(id) on delete cascade, -- obrigatório quando kind='child'
+  child_id      uuid references children(id) on delete cascade,
   email         text,
-  token_hash    bytea not null unique,
+  token_hash    bytea not null unique,     -- [R] mesmo tratamento de access_tokens
   role          text check (role in ('owner', 'parent')),
-  expires_at    timestamptz not null,
+  expires_at    timestamptz not null,      -- [R] 7 dias para convite de pai, não 365
   accepted_at   timestamptz,
-  accepted_by   uuid references auth.users(id),
-  created_by    uuid not null references auth.users(id),
-  created_at    timestamptz not null default now()
+  accepted_by   uuid references auth.users(id) on delete set null,
+  revoked_at    timestamptz,               -- [R]
+  created_by    uuid references auth.users(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  -- [R] eram comentários, agora são constraints
+  constraint invite_child_shape  check ((kind = 'child')  = (child_id is not null)),
+  constraint invite_parent_shape check ((kind = 'parent') = (role is not null))
 )
 
 transactions (
-  id            uuid primary key,
+  id            uuid primary key,          -- [R] gerado no cliente: serve de chave de idempotência
   child_id      uuid not null references children(id) on delete cascade,
-  amount_cents  bigint not null check (amount_cents <> 0), -- positivo credita, negativo debita
+  amount_cents  bigint not null,           -- positivo credita, negativo debita
+  currency      char(3) not null default 'BRL',   -- [R] congelada no lançamento
   reason        text not null,
-  emoji         text,                      -- ícone escolhido no lançamento
-  reverses_id   uuid references transactions(id) unique,   -- estorno aponta o original
-  created_by    uuid not null references auth.users(id),
-  created_at    timestamptz not null default now()
+  emoji         text,
+  reverses_id   uuid unique,               -- estorno aponta o original
+  source        text not null default 'manual'    -- [R] mesada recorrente não tem autor humano
+                check (source in ('manual', 'recurring', 'chore', 'request')),
+  created_by    uuid references auth.users(id) on delete set null,
+  created_by_name text not null,           -- [R] snapshot: autoria sobrevive à exclusão da conta
+  created_at    timestamptz not null default now(),
+  constraint amount_not_zero check (amount_cents <> 0),
+  constraint amount_sane     check (amount_cents between -100000000 and 100000000),
+  constraint reason_sane     check (length(btrim(reason)) between 1 and 200),
+  -- [R] estorno tem de ser da mesma criança; o resto vai em trigger (ver 3.2)
+  constraint transactions_id_child unique (id, child_id),
+  constraint reversal_same_child
+    foreign key (reverses_id, child_id) references transactions (id, child_id)
 )
 
 goals (
-  id            uuid primary key,
+  id            uuid primary key default gen_random_uuid(),
   child_id      uuid not null references children(id) on delete cascade,
-  title         text not null,             -- "bicicleta"
+  title         text not null,
   emoji         text not null default '🎯',
   target_cents  bigint not null check (target_cents > 0),
+  currency      char(3) not null default 'BRL',
   status        text not null default 'active'
                 check (status in ('active', 'reached', 'cancelled')),
-  reached_at    timestamptz,               -- congela a meta; nada é recalculado depois
-  created_by    uuid not null references auth.users(id),
-  created_at    timestamptz not null default now()
+  reached_at    timestamptz,
+  reached_by_transaction_id uuid references transactions(id) on delete set null,  -- [R]
+  cancelled_at  timestamptz,               -- [R]
+  cancelled_by  uuid references auth.users(id) on delete set null,   -- [R]
+  created_by    uuid references auth.users(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  -- [R] status e carimbos eram independentes; estados inválidos eram aceitos
+  constraint goal_status_consistent check (
+    (status = 'reached')   = (reached_at   is not null) and
+    (status = 'cancelled') = (cancelled_at is not null)
+  )
 )
 
 -- No máximo uma meta ativa por criança.
@@ -149,25 +202,121 @@ create unique index one_active_goal_per_child
   on goals (child_id) where status = 'active';
 ```
 
+### 3.1.1 Índices **[R]**
+
+O esquema anterior declarava um único índice, e nenhuma consulta real do produto o usava. Estes são obrigatórios:
+
+```sql
+-- histórico paginado e soma de saldo
+create index on transactions (child_id, created_at desc, id desc);
+-- exigido pela RLS de TODAS as tabelas: a PK é (family_id, user_id),
+-- coluna líder errada para o lookup por usuário
+create index on family_members (user_id);
+create index on children (family_id);
+create index on goals (child_id, created_at desc);
+create index on access_tokens (child_id);
+create index on invites (family_id);
+create index on invites (child_id);
+-- convite de pai pendente, um por endereço
+create unique index on invites (family_id, lower(email))
+  where accepted_at is null and revoked_at is null and email is not null;
+```
+
+Sem `family_members (user_id)`, cada verificação de RLS de cada linha de cada tabela faz varredura sequencial. Sem os índices de FK, cada `on delete cascade` a partir de `families` varre a tabela inteira por linha.
+
 ### 3.2 Regras do razão (ledger)
 
-- `transactions` é **append-only**. Não existe `UPDATE` nem `DELETE` nessa tabela; a permissão é negada por política do banco.
-- Uma correção é feita por **estorno**: uma nova linha de valor oposto, com `reverses_id` apontando para a original. As duas linhas aparecem no histórico, a original marcada como estornada.
+- `transactions` é **append-only**. Não existe `UPDATE` nem `DELETE`; a permissão é negada por ausência de policy e por `revoke`.
+- Correção é feita por **estorno**: linha nova de valor oposto, com `reverses_id` apontando para a original. As duas aparecem no histórico.
 - `saldo = SUM(transactions.amount_cents)` para a criança. É o único saldo que existe: não há saldo livre nem valor bloqueado.
-- Nenhum saldo é armazenado em coluna. Se a soma virar gargalo (improvável antes de dezenas de milhares de linhas por criança), o próximo passo é uma view materializada, não uma coluna mutável.
+- Nenhum saldo é armazenado em coluna.
+
+**[R] O estorno precisa de trigger, não só de FK.** A restrição `reversal_same_child` impede estorno cruzado entre irmãos e entre famílias. Faltam o valor oposto exato e a proibição de encadeamento:
+
+```sql
+create or replace function transactions_check_reversal() returns trigger
+language plpgsql as $$
+declare o transactions%rowtype;
+begin
+  if new.reverses_id is null then return new; end if;
+  select * into o from transactions where id = new.reverses_id for update;
+  if o.reverses_id is not null then
+    raise exception 'estorno de estorno não é permitido';
+  end if;
+  if new.amount_cents <> -o.amount_cents then
+    raise exception 'estorno deve ter valor oposto exato';
+  end if;
+  return new;
+end $$;
+```
+
+O `unique` em `reverses_id` já impede estornar duas vezes a mesma linha, e torna o estado "foi estornada?" derivável barato por `left join transactions r on r.reverses_id = t.id`. Nenhuma coluna `reversed_at` é necessária.
+
+**[R] Saldo definido em um lugar só**, para não divergir entre chamadas:
+
+```sql
+create view child_balances with (security_invoker = on) as
+  select child_id, coalesce(sum(amount_cents), 0)::bigint as balance_cents
+    from transactions group by child_id;
+```
+
+**Escape hatch de desempenho.** Uma criança com dois lançamentos por semana acumula cerca de 100 linhas por ano. Com o índice acima, o `SUM` é varredura de índice de algumas centenas de linhas e continua sub-milissegundo muito além de 10⁵ linhas por criança. Este produto não chega lá. **[R]** Se um dia chegar, a saída é uma linha de checkpoint (`child_id, through_transaction_id, balance_cents`) somada contra a cauda — não uma view materializada, cujo `REFRESH` é integral e precisaria rodar a cada inserção.
+
+**[R] Filtro por período** usa limites UTC meio-abertos calculados na aplicação (`created_at >= $from and created_at < $to`). Nunca `date(created_at at time zone ...)`, que descarta o índice.
 
 ### 3.3 Modelo de metas de poupança
 
-A meta é deliberadamente simples: **uma única meta ativa por criança, com um valor-alvo que o saldo total precisa alcançar.**
+Uma única meta ativa por criança, com valor-alvo que o saldo total precisa alcançar.
 
-- A criança tem no máximo uma meta ativa. A restrição é garantida pelo índice único parcial acima, não só pela aplicação.
-- O progresso é calculado, nunca armazenado: `progresso = saldo / target_cents`, limitado a 100%.
-- Não existe reserva, alocação nem saldo bloqueado. O dinheiro da meta é o próprio saldo da criança, e ela continua livre para gastar.
-- Quando o saldo alcança `target_cents`, a meta passa a `reached`, `reached_at` é preenchido e **o cálculo para ali**. Depois disso a meta é um registro histórico: se o saldo cair, a meta continua alcançada e o progresso continua exibido como 100%. Uma meta alcançada nunca volta a ser ativa.
-- Alcançar a meta não movimenta dinheiro. A compra do objetivo é um débito comum no razão, como qualquer outro.
-- Para começar uma meta nova, a criança ou o pai cria outra. A anterior fica no histórico com `reached` ou `cancelled`.
+- No máximo uma meta ativa, garantida pelo índice único parcial.
+- Progresso calculado, nunca armazenado: `progresso = saldo / target_cents`, limitado a 100%.
+- Não existe reserva, alocação nem saldo bloqueado. O dinheiro da meta é o próprio saldo, e a criança continua livre para gastar.
+- Alcançar a meta não movimenta dinheiro. A compra do objetivo é um débito comum.
+- Somente o responsável cria, edita e cancela a meta. A criança acompanha.
 
-Motivo da escolha: com uma única meta, o saldo total é uma resposta honesta para "quanto falta", e a criança de 4 anos entende a pergunta "quanto falta pra bicicleta" olhando um número só. Um modelo de reserva com várias metas simultâneas foi considerado e recusado por ser complexo demais para o público e para o MVP.
+**[R] O que marca a meta como alcançada.** A versão anterior não dizia, e o saldo é derivado: nada dispara na leitura, então a meta ficaria `active` para sempre. O único evento capaz de mover o saldo é uma inserção em `transactions`. Logo, um trigger `AFTER INSERT`:
+
+```sql
+create or replace function goal_check_reached() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare g public.goals%rowtype; bal bigint;
+begin
+  -- estorno da transação que alcançou a meta reabre a meta
+  if new.reverses_id is not null then
+    update public.goals
+       set status = 'active', reached_at = null, reached_by_transaction_id = null
+     where reached_by_transaction_id = new.reverses_id;
+  end if;
+
+  -- 1) trava a meta ANTES de somar: serializa por criança
+  select * into g from public.goals
+    where child_id = new.child_id and status = 'active'
+    for update;
+  if not found then return null; end if;
+
+  -- 2) só depois da trava, soma em statement novo
+  select coalesce(sum(amount_cents), 0) into bal
+    from public.transactions where child_id = new.child_id;
+
+  if bal >= g.target_cents then
+    update public.goals
+       set status = 'reached', reached_at = now(), reached_by_transaction_id = new.id
+     where id = g.id;
+  end if;
+  return null;
+end $$;
+
+create trigger trg_goal_reached after insert on transactions
+  for each row execute function goal_check_reached();
+```
+
+Três detalhes que não são opcionais:
+
+1. **A ordem é travar e depois somar.** Somar e depois travar está errado: dois pais lançando ao mesmo tempo em READ COMMITTED veem cada um apenas a própria linha não confirmada, calculam saldo abaixo do alvo, e **nenhum** dos dois marca a meta. Travando primeiro, a transação bloqueada recebe snapshot novo ao seguir e enxerga a inserção da outra.
+2. **Meta criada com saldo já acima do alvo** nunca dispara este trigger. A mesma verificação roda em `BEFORE INSERT on goals`.
+3. **Estorno reabre a meta que ele desfez.** Um lançamento de R$ 4.000,00 no lugar de R$ 40,00 alcança a meta na hora, e o estorno — único mecanismo de correção do produto — não alcançava a tabela de metas. Agora alcança, via `reached_by_transaction_id`. Queda normal de saldo continua **não** reabrindo a meta: a criança não perde a conquista por gastar depois.
+
+**[R] Escrita em `goals` fora do trigger** é só do responsável, por policy. A ida de `reached` para `active` é permitida exclusivamente ao trigger (`security definer`); um `BEFORE UPDATE` recusa a transição vinda de sessão de usuário.
 
 ---
 
@@ -177,92 +326,164 @@ Motivo da escolha: com uma única meta, o saldo total é uma resposta honesta pa
 
 | Papel | Como entra | O que faz |
 |---|---|---|
-| Pai/responsável | Google OAuth ou magic link | Cria família, convida outro responsável, cria criança, lança crédito e débito, estorna, cria meta, gera e revoga link da criança |
-| Criança com conta | Google OAuth ou magic link | Vê saldo, histórico e metas. Reserva para meta se o pai permitir |
-| Criança por link | URL com token, sem senha | Vê saldo, histórico e metas. Somente leitura por padrão |
+| Pai/responsável | Google OAuth ou magic link | Cria família, convida responsável, cria criança, lança crédito e débito, estorna, cria meta, gera e revoga link da criança |
+| Criança com conta | Google OAuth ou magic link | Vê saldo, histórico e meta. **Somente leitura no MVP** |
+| Criança por link | URL com token, sem senha | Vê saldo, histórico e meta. **Somente leitura no MVP** |
 
-Um pai pode pertencer a várias famílias (`family_members`). Uma família não enxerga nada de outra família.
+**[R]** A linha da criança com conta dizia "reserva para meta se o pai permitir", resto de um modelo removido. A criança não escreve nada no MVP, por nenhum dos dois caminhos.
+
+Um pai pode pertencer a várias famílias. Uma família não enxerga nada de outra.
 
 ### 4.2 A criança é um perfil, não um usuário
 
-`children` é o perfil. As formas de acesso a esse perfil ficam em `child_identities` (contas) e `access_tokens` (links). Uma criança pode ter zero contas, uma conta Google, e vários links ao mesmo tempo. Todos resolvem para o mesmo `child_id`.
+`children` é o perfil. As formas de acesso ficam em `child_identities` (contas) e `access_tokens` (links). Uma criança pode ter zero contas, uma conta Google e vários links ao mesmo tempo.
 
-Isso importa porque **conta Google exige 13 anos no Brasil**, e contas supervisionadas por Family Link podem ter o OAuth de terceiros bloqueado pelo controle parental. Consequência de projeto: **o link é o caminho principal de acesso da criança e a conta é opcional.** O aplicativo nunca exige conta para a criança ver o saldo.
+**Conta Google exige 13 anos no Brasil**, e contas supervisionadas por Family Link podem ter o OAuth de terceiros bloqueado pelo controle parental. Consequência: **o link é o caminho principal e a conta é opcional.** O aplicativo nunca exige conta para a criança ver o saldo.
 
 ### 4.3 Normalização das sessões
 
-Todo acesso vira uma sessão Supabase, para que a autorização fique inteiramente em Row Level Security.
+Todo acesso vira uma sessão Supabase, para que a autorização fique inteiramente em RLS.
 
-- **Conta (Google ou magic link):** fluxo padrão do Supabase Auth. Existe `auth.uid()`.
-- **Link:** uma rota de servidor recebe o token, calcula o SHA-256, procura em `access_tokens`, valida expiração e revogação. Se válido, cria uma **sessão anônima** do Supabase, registra a identidade correspondente e devolve a sessão em cookie.
+- **Conta (Google ou magic link):** fluxo padrão. Existe `auth.uid()`.
+- **Link:** rota de servidor valida o token e cria uma **sessão anônima**.
 
-Um **Custom Access Token Hook** (função Postgres do Supabase Auth) injeta no JWT as claims `child_id` e `child_scope` quando o usuário autenticado corresponde a uma identidade de criança. As políticas RLS leem `auth.jwt() ->> 'child_id'`, então pai e criança são cobertos pelas mesmas políticas, independente do caminho de login.
+**[R] A ordem importa e precisa estar escrita.** O Custom Access Token Hook roda na criação do token; a linha em `child_identities` só pode existir depois que o usuário anônimo existe. Se a sessão for entregue direto do `signInAnonymously()`, o JWT sai **sem** a claim e toda policy nega a primeira requisição. A ordem correta é:
 
-### 4.4 Política de exemplo
+1. `signInAnonymously()`
+2. inserir `child_identities` com `service_role`
+3. `refreshSession()` — é este token que carrega `child_id`
+4. só então gravar o cookie
+
+**[R] Reusar a sessão existente.** Se o dispositivo já tem cookie válido para aquele token, a rota não cria usuário anônimo novo. Sem isso, cada abertura de link em cada dispositivo cria uma linha permanente em `auth.users`, que conta como usuário ativo mensal e nunca é limpa pelo Supabase.
+
+**[R] Limite de sign-in anônimo.** O padrão do Supabase é 30 por hora por IP. Como a troca acontece no servidor, todas as famílias compartilham os IPs de saída da Vercel, ou seja, um balde global. Aumentar o limite no painel e reusar sessão, conforme acima.
+
+**[R] Faxina agendada.** O mesmo GitHub Action que evita a pausa apaga usuários anônimos sem uso há mais de 30 dias, junto com suas identidades.
+
+O hook injeta `child_id` e `child_scope` no JWT. **[R] O hook só emite `child_id` quando a identidade está viva:** `child_identities.revoked_at is null` e, para `provider = 'link'`, o `access_tokens` correspondente com `revoked_at is null and expires_at > now()`.
+
+### 4.4 Row Level Security
+
+**[R] RLS precisa ser ligada explicitamente.** Postgres não liga sozinho. Uma migration que cria as tabelas e para aí expõe tudo pelo PostgREST com a chave anon, que é pública. A migration de RLS é obrigatória e cobre as nove tabelas:
+
+```sql
+alter table profiles         enable row level security;
+alter table families         enable row level security;
+alter table family_members   enable row level security;
+alter table children         enable row level security;
+alter table child_identities enable row level security;
+alter table access_tokens    enable row level security;
+alter table invites          enable row level security;
+alter table transactions     enable row level security;
+alter table goals            enable row level security;
+
+revoke all on child_identities, access_tokens, invites from anon, authenticated;
+revoke update, delete on transactions from anon, authenticated;
+```
+
+**[R] Sessão anônima tem role `authenticated`.** O Supabase cria linha real em `auth.users`, então o visitante anônimo **não** tem `auth.uid()` nulo — corrigindo o que a versão anterior deste documento afirmava. Como o sign-in anônimo fica habilitado no projeto para o fluxo do link funcionar, qualquer pessoa com a chave anon pública gera uma sessão `authenticated`. **Nenhuma policy pode ser escrita como "está logado".** Toda policy se apoia em pertencimento a família ou na claim `child_id`.
+
+**[R] Helpers `security definer` para evitar recursão.** Subconsulta dentro de policy é avaliada sob a RLS de quem chama. Uma policy em `family_members` que consulta `family_members` produz `infinite recursion detected in policy`, que é a falha mais comum desse desenho no Supabase. Toda policy passa por estes helpers:
+
+```sql
+create or replace function app.is_family_parent(p_child_id uuid) returns boolean
+language sql security definer stable set search_path = '' as $$
+  select exists (
+    select 1 from public.children c
+    join public.family_members fm on fm.family_id = c.family_id
+    where c.id = p_child_id and fm.user_id = auth.uid()
+  )
+$$;
+
+create or replace function app.current_child_id() returns uuid
+language sql stable as $$
+  select nullif(auth.jwt() ->> 'child_id', '')::uuid
+$$;
+```
+
+Matriz de policies, resumida:
+
+| Tabela | select | insert | update | delete |
+|---|---|---|---|---|
+| `profiles` | quem compartilha família | próprio | próprio | — |
+| `families` | membro | função definer | `owner` | `owner` |
+| `family_members` | membro da mesma família | **nenhuma** (função definer) | `owner` | próprio ou `owner` |
+| `children` | membro, ou a própria criança | pai da família | pai da família | — |
+| `child_identities` | pai da família | **nenhuma** | **nenhuma** | pai da família |
+| `access_tokens` | pai da família | pai da família | pai da família (revogar) | pai da família |
+| `invites` | membro da família | `owner` da família | `owner` (revogar) | `owner` |
+| `transactions` | pai, ou a própria criança | pai, com `created_by = auth.uid()` | **nenhuma** | **nenhuma** |
+| `goals` | pai, ou a própria criança | pai | pai, e o trigger | pai |
+
+Exemplo, já com as correções:
 
 ```sql
 create policy transactions_select on transactions
 for select using (
-  -- a própria criança, por conta ou por link
-  child_id = nullif(auth.jwt() ->> 'child_id', '')::uuid
-  or
-  -- qualquer responsável da família da criança
-  exists (
-    select 1
-    from children c
-    join family_members fm on fm.family_id = c.family_id
-    where c.id = transactions.child_id
-      and fm.user_id = auth.uid()
-  )
+  child_id = app.current_child_id()
+  or app.is_family_parent(child_id)
 );
 
 create policy transactions_insert on transactions
 for insert with check (
-  exists (
-    select 1
-    from children c
-    join family_members fm on fm.family_id = c.family_id
-    where c.id = transactions.child_id
-      and fm.user_id = auth.uid()
-  )
+  app.is_family_parent(child_id)
+  and created_by = auth.uid()                    -- [R] autoria era forjável
+  and exists (select 1 from children c           -- [R] criança arquivada não recebe lançamento
+              where c.id = child_id and c.archived_at is null)
 );
 
--- Nenhuma policy de update ou delete é criada em transactions.
--- Sem policy, a operação é negada. O razão é imutável por construção.
+-- Nenhuma policy de update ou delete em transactions. Sem policy, negado.
 ```
+
+**[R] `child_identities` sem policy de escrita, nunca.** Ela é a única entrada do hook. Se qualquer sessão comum puder inserir ali, basta gravar `(child_id da vítima, próprio auth_user_id)` e dar refresh para o Supabase assinar um JWT legítimo com o `child_id` alheio. A claim não é forjável por criptografia, mas é *causável*. Escrita só pela rota de troca com `service_role` e por funções `security definer`.
+
+**[R] `family_members` sem policy de insert.** A única checagem possível com o cliente do próprio usuário seria `user_id = auth.uid()`, que deixaria qualquer autenticado — inclusive um anônimo — se inserir em qualquer `family_id`. Aceitar convite e criar família passam por função `security definer` que recebe o token cru, valida e insere. Ver seção 5.
 
 ### 4.5 Segurança do link de acesso
 
-Esta seção descreve um risco real. Ela está escrita em texto direto porque a ordem das mitigações importa.
+Esta seção descreve um risco real. Está em texto direto porque a ordem das mitigações importa.
 
-Um token que trafega na URL vaza com facilidade. Ele aparece no histórico do navegador, em logs de servidor e de proxy, no cabeçalho `Referer` enviado a terceiros, e em qualquer captura de tela que a criança compartilhe. Quem obtiver o link passa a ver os dados da criança.
+Um token que trafega na URL vaza com facilidade: histórico do navegador, logs de servidor e proxy, cabeçalho `Referer`, captura de tela compartilhada. Quem obtiver o link vê os dados da criança.
 
-As mitigações abaixo são cumulativas e todas fazem parte do MVP:
+Mitigações cumulativas, todas no MVP:
 
-1. O token tem 32 bytes gerados por `crypto.getRandomValues`, codificados em base64url.
-2. O banco guarda apenas o SHA-256 do token. O valor em claro é exibido ao pai uma única vez, no momento da criação.
-3. O token fica em segmento de caminho (`/c/<token>`), nunca em query string. Segmentos de caminho vazam menos em logs e ferramentas de analytics.
-4. Na primeira visita, o servidor troca o token por um cookie de sessão `HttpOnly`, `Secure`, `SameSite=Lax`, e o cliente limpa a URL com `history.replaceState`. O token deixa a barra de endereços.
-5. O escopo padrão é somente leitura. O token nunca cria, edita ou estorna lançamento.
-6. `expires_at` obrigatório, com padrão de 365 dias. O pai revoga e gera outro a qualquer momento, e vê `last_used_at` de cada link.
-7. Cabeçalho `Referrer-Policy: no-referrer` no aplicativo inteiro.
-8. Limite de taxa por token na rota de troca, para impedir varredura de tokens.
+1. Token de 32 bytes de `crypto.getRandomValues`, em base64url.
+2. **[R]** O banco guarda `HMAC-SHA256(token, PEPPER)`, com o pepper em variável de ambiente e fora do banco. Assim um dump vazado não permite testar tokens. O valor em claro é exibido ao pai uma única vez.
+3. Token em segmento de caminho (`/c/<token>`), nunca em query string.
+4. **[R]** `/c/[token]` é rota de servidor que grava o cookie e responde **303** para `/c/saldo`, com `Cache-Control: no-store`. `history.replaceState` no cliente **não basta**: a navegação já aconteceu, e com o Serwist instalado essa resposta fica no CacheStorage indexada pela URL com o token, num tablet compartilhado. O `/c/*` entra na denylist de navegação do service worker, e o `start_url` do manifesto é fixo em `/c/saldo`, nunca derivado da URL aberta na instalação.
+5. Escopo somente leitura. O token nunca cria, edita ou estorna.
+6. **[R] Revogar precisa matar a sessão viva.** Marcar `revoked_at` não invalida JWT já emitido, e o refresh token do Supabase rotaciona sem prazo fixo — na versão anterior, a sessão se renovava para sempre e a revogação era cosmética. Agora: `child_identities.access_token_id` com cascade, o hook confere validade a cada refresh, revogar apaga as identidades derivadas **e** chama a admin API para destruir os usuários anônimos daquele token. TTL do access token em 10 a 15 minutos, para limitar a janela residual.
+7. `Referrer-Policy: no-referrer` no aplicativo inteiro.
+8. **[R] Limite de taxa por IP e teto global**, persistido em Postgres. O limite por token não impede varredura, porque varredura usa um token diferente a cada requisição; e limitador em memória não funciona em serverless, onde cada instância tem a própria memória. O contador por token permanece apenas como sinal de link compartilhado demais.
 
-Uma conta Google só é vinculada a uma criança por meio de convite consumido ou de sessão de link válida. **A vinculação nunca é feita por igualdade de endereço de e-mail**, porque qualquer pessoa capaz de criar um endereço parecido passaria a ser a criança. A restrição `unique (auth_user_id)` em `child_identities` impede que a mesma conta Google aponte para duas crianças.
+**[R] Vincular conta Google não pode partir de sessão de link.** A regra anterior — "conta Google é vinculada por convite consumido ou por sessão de link válida" — transformava posse do link em criação de uma credencial permanente e independente: quem abrisse um link encaminhado vinculava o próprio Google àquele `child_id`, sem expiração e sem revogação, e continuava dentro mesmo depois de o pai revogar o link. Agora o vínculo exige convite `kind='child'` emitido pelo pai, ou aprovação que o pai confirma na própria sessão. `child_identities.revoked_at` existe, e a tela do pai lista contas vinculadas ao lado dos links.
+
+A vinculação **nunca** é feita por igualdade de e-mail. `unique (auth_user_id)` impede que a mesma conta Google aponte para duas crianças.
+
+**[R] Convite de pai recebe o mesmo tratamento.** Ele carrega privilégio *maior* que o link da criança: escrita nas finanças e poder de criar links. Recebe os itens 1 a 4, 7 e 8 acima, mais `revoked_at`, validade de 7 dias, vínculo ao `email` quando presente, e uso único atômico:
+
+```sql
+update invites set accepted_at = now(), accepted_by = auth.uid()
+ where id = $1 and accepted_at is null and revoked_at is null and expires_at > now();
+-- age somente se uma linha foi afetada
+```
 
 ### 4.6 Sessões simultâneas
 
-O pai abre o link da filha para conferir e não pode perder a própria sessão. O cookie da criança usa nome próprio e `Path=/c`; o cookie do responsável permanece em `/`. Quando uma sessão de criança está ativa, uma faixa fixa mostra "Você está vendo como Ana" com o botão de sair.
+O pai abre o link da filha para conferir e não pode perder a própria sessão. O cookie da criança usa nome próprio e `Path=/c`; o cookie do responsável fica em `/`. Faixa fixa mostra "Você está vendo como Ana", com botão de sair.
+
+**[R] Cookie com `Path=/c` não é enviado para `/api/*`.** A rota de troca fica em `/c/api/session`, e todo dado da criança vem de RSC e Server Actions sob `/c`. Alargar para `Path=/` reintroduziria exatamente a colisão que esta seção evita. `Path` é conveniência de escopo, não fronteira de confiança: a sessão do responsável continua validada no servidor, nunca inferida pelo cookie que chegou.
 
 ### 4.7 Dados pessoais de menores (LGPD)
 
-O tratamento de dado de criança exige minimização. Consequências diretas no produto:
-
-- Guardamos apelido, não nome completo.
-- Avatar é ilustração escolhida em uma lista fechada. **O MVP não aceita upload de foto.**
-- Data de nascimento é opcional e serve apenas para escolher o modo de interface.
+- Apelido, não nome completo.
+- Avatar é ilustração de lista fechada. **O MVP não aceita upload de foto.**
+- Data de nascimento opcional.
 - Criança que acessa por link não tem e-mail cadastrado.
-- Exclusão de família apaga em cascata todos os dados das crianças.
+
+**[R] Cascade não alcança o schema `auth`.** Apagar a família apaga o schema `public`, mas a linha em `auth.users` e as de `auth.identities` — que guardam e-mail e `sub` do Google, dado identificável de menor — sobrevivem. A exclusão de família chama a admin API para apagar os usuários associados.
+
+**[R] Exclusão de conta e saída de família precisam existir.** `created_by` agora é anulável com `on delete set null`, e `created_by_name` guarda o snapshot da autoria, então apagar a conta é possível sem quebrar o razão imutável. Sair da família exige transferência de `owner` quando o último `owner` sai; a operação é bloqueada até haver outro.
 
 ---
 
@@ -270,94 +491,166 @@ O tratamento de dado de criança exige minimização. Consequências diretas no 
 
 ```
 app/
-  (parent)/                 # área do responsável, cookie de sessão em "/"
+  (parent)/                 # área do responsável, cookie em "/"
     familias/
     criancas/[id]/
     convites/
   c/                        # área da criança, cookie com Path=/c
-    [token]/                # troca token por sessão e redireciona
+    [token]/                # 303 + no-store, troca token por sessão
+    api/session/            # [R] sob /c, senão o cookie não chega
     saldo/
     historico/
-    metas/
-  api/
-    child-session/          # troca de token por sessão, com limite de taxa
+    meta/
+  manifest.webmanifest/     # rota dinâmica, idioma resolvido
+messages/
+  pt.json                   # idioma-fonte
+  en.json
+  es.json
 lib/
-  money.ts                  # centavos, formatação pt-BR, nunca float
+  money.ts                  # centavos, formatação por locale, nunca float
+  i18n.ts                   # resolução de locale, cookie e Accept-Language
   supabase/
   auth/
 components/
   ludic/                    # cofrinho, moeda, confete, avatares
 supabase/
-  migrations/               # SQL versionado, incluindo as policies RLS
+  migrations/               # SQL versionado: schema, índices, RLS, triggers, hook
 ```
 
-Escrita de dados acontece em **Server Actions**, com validação Zod na entrada e o cliente Supabase do usuário autenticado — nunca com `service_role`. A única exceção é a rota de troca de token, que precisa consultar `access_tokens` antes de existir sessão; ela usa `service_role`, é a menor superfície possível do sistema e não recebe nenhum outro dado do usuário além do token.
+Escrita acontece em **Server Actions**, com validação Zod e o cliente Supabase do usuário autenticado.
+
+**[R] Três operações não são expressáveis com o cliente do usuário** e passam por funções Postgres `security definer` com `set search_path = ''`: criar família (insere a própria linha de `family_members`), aceitar convite (insere membro em família da qual ainda não faz parte) e criar convite. Elas são a alternativa sancionada ao `service_role`, que continua restrito à rota de troca de token. Sem nomear essa alternativa, quem implementa recorre ao `service_role` em Server Action e a superfície mínima deixa de existir.
 
 ---
 
 ## 6. Sistema de design lúdico
 
-O público vai de 4 a 16 anos. Um único visual não atende as duas pontas: o que encanta quem tem 5 anos constrange quem tem 15. A solução é um **modo de interface**, não dois aplicativos.
+O público vai de 4 a 16 anos. Um visual só não atende as duas pontas: o que encanta quem tem 5 constrange quem tem 15. A solução é um **modo de interface**.
 
 ### 6.1 Modos
 
-| | Modo Pequeno (4 a 8 anos) | Modo Grande (9 a 16 anos) |
+| | Modo Pequeno (4 a 8) | Modo Grande (9 a 16) |
 |---|---|---|
 | Leitura exigida | Mínima. Ícone e número grandes | Normal |
 | Saldo | Número enorme, moedas ilustradas | Número grande, tipografia limpa |
 | Histórico | Lista de ícones com valor colorido | Lista com data, motivo e autor |
-| Meta | Cofrinho que enche, cofrinho transborda | Barra de progresso e valor que falta |
+| Meta | Cofrinho que enche, transborda ao alcançar | Barra de progresso e valor que falta |
 | Animação | Generosa: moeda cai, confete, cofrinho balança | Discreta: transição e confete na conquista |
 | Som | Opcional, desligado por padrão | Desligado |
 | Vocabulário | "Você ganhou", "Você gastou", "Falta pouco" | "Crédito", "Débito", "Meta" |
 
-O modo é escolhido pela data de nascimento e pode ser sobrescrito pelo pai em `children.ui_mode`. A criança de 12 anos que gosta do modo pequeno não é impedida.
+**[R] No MVP, o Modo Grande é variação de tipografia, vocabulário e densidade sobre o mesmo layout**, não uma segunda interface. Duas interfaces completas dobram o trabalho de front-end e de tradução, e a revisão apontou isso como o item de escopo mais subestimado.
+
+O modo vem da data de nascimento, com padrão `pequeno` quando ela não existe, e o pai sobrescreve em `children.ui_mode`.
 
 ### 6.2 Identidade visual
 
-- **Nome do aplicativo:** **Cofrinho**.
-- **Elemento central:** o próprio cofrinho, ilustrado. Não existe mascote nomeado. O cofrinho aparece no ícone, no estado vazio, no card de saldo, na comemoração de meta e nas telas de erro. Ele é o que faz a criança de 4 anos reconhecer o aplicativo sem saber ler.
-- **Estados do cofrinho:** vazio, com pouco, cheio e transbordando de moedas. O estado acompanha o progresso da meta ativa, ou o saldo quando não há meta. É a representação visual principal do Modo Pequeno.
-- **Ícone do aplicativo:** o cofrinho sobre círculo de cor sólida, sem texto. Legível a 48 px. Conjunto completo de ícones maskable para instalação em Android e iOS.
-- **Paleta:** base roxo-índigo; acentos amarelo-moeda, verde-entrada e coral-saída. Entrada e saída **nunca se distinguem só pela cor** — sempre acompanham sinal, ícone e palavra, porque daltonismo é comum e a criança pequena ainda não lê o sinal isolado.
-- **Tipografia:** Baloo 2 para títulos e valores (arredondada, alegre), Nunito para texto corrido. Ambas no Google Fonts, com fallback de sistema.
-- **Ilustração:** avatares de animais em estilo plano, conjunto fechado de cerca de 16 opções. A criança escolhe o seu.
-- **Textos de interface e placeholders** seguem o mesmo tom lúdico: "No que você gastou?", "Quanto falta pra bicicleta?", "Seu cofrinho tá assim". O tom muda conforme o modo.
+- **Nome:** **Cofrinho**. Não é traduzido: é marca.
+- **Elemento central:** o cofrinho ilustrado. Sem mascote nomeado. Aparece no ícone, no estado vazio, no card de saldo, na comemoração e nas telas de erro. É o que faz a criança de 4 anos reconhecer o aplicativo sem saber ler.
+- **Estados do cofrinho:** vazio, com pouco, cheio e transbordando. Acompanha o progresso da meta, ou o saldo quando não há meta.
+- **Ícone:** cofrinho sobre círculo de cor sólida, sem texto. Legível a 48 px. Conjunto maskable completo.
+- **Paleta:** base roxo-índigo; acentos amarelo-moeda, verde-entrada e coral-saída. Entrada e saída **nunca se distinguem só pela cor** — sempre com sinal, ícone e palavra.
+- **Tipografia:** Baloo 2 para títulos e valores, Nunito para texto corrido. **[R]** Ambas cobrem os três idiomas; acentuação do espanhol e do português verificada antes de fechar a escolha.
+- **Avatares:** animais em estilo plano. **[R]** Oito opções no MVP, não dezesseis: são ilustrações no caminho crítico.
 
-### 6.3 Acessibilidade, que aqui é requisito e não enfeite
+### 6.3 Acessibilidade
 
-- Área de toque mínima de 48 por 48 px em toda a interface da criança.
-- Contraste mínimo AA (4.5:1) para texto; os valores em destaque ficam acima disso.
-- Corpo de texto nunca abaixo de 16 px; valores monetários acima de 32 px.
+- Área de toque mínima de 48 por 48 px na interface da criança.
+- Contraste mínimo AA (4.5:1); valores em destaque acima disso.
+- Corpo de texto nunca abaixo de 16 px; valores acima de 32 px.
 - `prefers-reduced-motion` desliga confete e movimento do cofrinho.
-- Toda animação tem uma leitura estática equivalente. Nenhuma informação existe só no movimento.
-- Navegação por teclado e rótulos ARIA em todos os controles, para leitor de tela.
+- Toda animação tem leitura estática equivalente. Nenhuma informação existe só no movimento.
+- Navegação por teclado e rótulos ARIA em todos os controles.
+
+### 6.4 Idioma e formatação
+
+O aplicativo fala **português, inglês e espanhol**. O idioma é escolhido automaticamente e pode ser trocado à mão.
+
+**Resolução**, nesta precedência:
+
+1. Cookie `locale`, gravado quando o usuário troca à mão.
+2. Preferência do perfil do responsável, quando há sessão.
+3. `Accept-Language` da requisição, casado contra os idiomas suportados.
+4. Português, como padrão final.
+
+A resolução acontece no servidor, na primeira renderização, para que a página nunca apareça no idioma errado antes de corrigir. `navigator.language` não é usado: chega tarde e provoca troca visível de texto.
+
+**Sem prefixo de idioma na URL.** Nada de `/pt/saldo`. O motivo é o link da criança: precisa ser curto, estável e imune a idioma, porque é colado em dispositivo de criança e vira atalho na tela de início. Prefixo quebraria links salvos ao trocar de idioma e brigaria com o `start_url` fixo exigido pela seção 4.5. O custo é indexação por idioma em buscador, irrelevante em aplicativo privado.
+
+**Idioma não é moeda.** O `Intl.NumberFormat` recebe o locale para separador e posição do símbolo, mas a moeda é a da família, sempre BRL no MVP. Um pai brasileiro com o celular em inglês vê `R$ 1,234.56`, não `$1,234.56`. Esse é o erro mais comum desse tipo de sistema e corrompe a leitura de dinheiro.
+
+**Formatação delegada a `Intl`**, nunca escrita à mão: `NumberFormat`, `DateTimeFormat`, `RelativeTimeFormat`, `PluralRules` pelas mensagens ICU. Nomes de mês e dia nunca são constantes no código.
+
+**Mensagens em ICU MessageFormat**, com plural declarado na mensagem. Nenhuma string montada por concatenação: a ordem das palavras muda entre os três idiomas.
+
+**Custo real:** dois modos de interface vezes três idiomas são seis conjuntos de texto. As chaves são `small.balance.title` e `big.balance.title`, para que a diferença fique explícita e traduzível, não escondida em condicional dentro do componente. A redução do Modo Grande a variação de tipografia e vocabulário (seção 6.1) mantém esse custo administrável.
+
+**Manifesto do PWA** servido por rota dinâmica, com `name`, `short_name` e `description` no idioma resolvido.
+
+**Idioma da criança** herda o da família; o responsável pode fixar por criança. A sessão por link usa o idioma da criança, ignorando o `Accept-Language` do dispositivo.
+
+**Português é o idioma-fonte.** `messages/pt.json` é a referência, e a compilação falha se `en.json` ou `es.json` tiverem chave faltando ou sobrando. Sem fallback silencioso na interface: texto meio traduzido é pior que texto traduzido mal.
 
 ---
 
 ## 7. PWA
 
-- `manifest.webmanifest` com nome, ícones maskable, `display: standalone`, `theme_color` e `start_url` separados para responsável e criança.
-- Service worker com Serwist: casco do aplicativo em cache; saldo, histórico e metas com estratégia *stale-while-revalidate*, para que a criança abra offline e veja o último estado conhecido, marcado como "atualizado às HH:MM".
-- Escrita é sempre online no MVP. Fila offline de lançamentos fica para depois.
-- Tela de onboarding ensina "adicionar à tela de início", com instrução específica por sistema. Sem isso, iOS não instala nem envia push.
+- `manifest.webmanifest` por rota dinâmica, com ícones maskable, `display: standalone` e `theme_color`.
+- **[R] `start_url` fixo**: `/` para o responsável, `/c/saldo` para a criança. Nunca derivado da URL aberta na instalação, senão o token entra no atalho.
+- Service worker com Serwist: casco em cache; saldo, histórico e meta em *stale-while-revalidate*, para a criança abrir offline e ver o último estado, marcado com "atualizado às HH:MM".
+- **[R] `/c/*` na denylist de navegação do service worker**, para o token nunca ser cacheado.
+- Escrita é sempre online no MVP.
+- Onboarding ensina "adicionar à tela de início", com instrução por sistema.
 
 ---
 
 ## 8. Decisões tomadas
 
-Fechadas em 2026-09-04. Registradas aqui para que a razão de cada uma não se perca.
+Fechadas em 2026-09-04.
 
-1. **Nome:** o produto chama **Cofrinho**. Sem mascote nomeado; o cofrinho ilustrado é o elemento central da identidade. O repositório continua `mesada`.
-2. **Meta de poupança:** uma única meta ativa por criança, com alvo sobre o saldo total. Sem reserva de valor. Ver seção 3.3.
-3. **Quem cria a meta:** somente o responsável cria, edita e cancela. A criança acompanha. Isso mantém o link da criança estritamente somente leitura no MVP, que é a mitigação mais forte contra vazamento de token. Criança propor meta é item pós-MVP.
-4. **Meta alcançada:** ao atingir o alvo, a meta congela em `reached` para sempre. Queda posterior de saldo não reabre a meta e o progresso permanece em 100%. A criança não perde a conquista por gastar depois.
-5. **Validade do link da criança:** 365 dias, renovável em um toque. O pai vê `last_used_at` de cada link e revoga a qualquer momento. A janela maior foi aceita porque as outras sete mitigações da seção 4.5 continuam valendo, e um link que quebra sozinho no meio do ano faz o pai desistir do produto.
-6. **Moeda:** somente BRL no MVP. A coluna de moeda por família fica prevista no modelo, então multi-moeda não exige migração destrutiva.
-7. **Domínio:** `cofrinho.vercel.app` no início. Domínio próprio é configuração na Vercel, não mudança de código.
+1. **Nome:** **Cofrinho**. Sem mascote nomeado; o cofrinho ilustrado é o elemento central. Repositório continua `mesada`. O nome não é traduzido.
+2. **Meta de poupança:** uma única meta ativa por criança, alvo sobre o saldo total, sem reserva. Ver 3.3.
+3. **Quem cria a meta:** somente o responsável. A criança acompanha. Mantém o link estritamente somente leitura, que é a mitigação mais forte contra vazamento de token.
+4. **Meta alcançada:** congela em `reached`. Queda posterior de saldo não reabre. **[R] Exceção:** o estorno da própria transação que alcançou a meta reabre, porque senão o único mecanismo de correção do produto não alcança a meta.
+5. **Validade do link:** 365 dias, renovável em um toque, com `last_used_at` e revogação. **[R]** A janela longa só é aceitável porque a revogação passou a matar a sessão viva (4.5 item 6); sem isso, 365 dias significavam acesso permanente.
+6. **Moeda:** somente BRL no MVP. Coluna de moeda em `families`, `transactions` e `goals`, congelada no lançamento.
+7. **Idioma:** português, inglês e espanhol, por `Accept-Language`, trocável à mão. Sem prefixo na URL. Idioma e moeda independentes.
+8. **Domínio:** `cofrinho.vercel.app` no início.
 
 ---
 
-## 9. Anexo: o que este documento não cobre
+## 9. Operação **[R]**
 
-Recursos pós-MVP têm o próprio documento, em `docs/features.md`. Eles influenciam o modelo de dados acima somente onde já está indicado (moeda, cofrinho com rendimento, tarefas), e nenhum deles exige migração destrutiva a partir do esquema proposto.
+Nenhuma dessas coisas estava documentada, e todas travam o primeiro deploy.
+
+### 9.1 Variáveis de ambiente
+
+| Variável | Onde | Para quê |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | cliente e servidor | endpoint do projeto |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | cliente e servidor | chave pública; é pública mesmo, a proteção é a RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | **somente servidor** | rota de troca de token e faxina agendada |
+| `TOKEN_PEPPER` | **somente servidor** | HMAC dos tokens de link e de convite |
+| `SUPABASE_DB_URL` | CI | migrations e dump de backup |
+
+`SUPABASE_SERVICE_ROLE_KEY` e `TOKEN_PEPPER` nunca aparecem em variável `NEXT_PUBLIC_*`, nunca chegam ao cliente e nunca entram no repositório.
+
+### 9.2 Migrations
+
+SQL versionado em `supabase/migrations/`, aplicado por `supabase db push` no GitHub Actions ao mergear na branch principal. Toda migration é idempotente e revisada à mão. Nenhuma alteração de schema pelo painel do Supabase.
+
+### 9.3 Backup
+
+Supabase Free **não tem backup nem PITR**. Como o produto promete histórico imutável, isso é inaceitável sem contrapartida: GitHub Action semanal roda `supabase db dump`, cifra o resultado e guarda como artefato privado com retenção de 90 dias. O procedimento de restauração é testado uma vez antes do lançamento e documentado em `docs/runbook.md`.
+
+### 9.4 Ambientes
+
+Um projeto Supabase de produção. Desenvolvimento e preview usam Supabase local em Docker. A cota gratuita de dois projetos ativos não é gasta com staging.
+
+---
+
+## 10. Anexo
+
+Recursos pós-MVP estão em `docs/features.md`.
+
+**[R] Correção de uma afirmação da versão 1.0:** dizer que nenhum recurso pós-MVP exige migração destrutiva era falso. Duas exceções: várias metas com reserva muda a semântica de linhas já gravadas (`progresso = saldo / target_cents` deixa de valer) e derruba o índice único; e mesada recorrente precisava de `created_by` anulável. A segunda já está resolvida no esquema acima, com `source` e `created_by` anulável. A primeira permanece destrutiva por natureza e está registrada como tal.

@@ -6,7 +6,7 @@ Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanha
 
 ## Documentos
 
-- [`docs/architecture.md`](docs/architecture.md) — stack, modelo de dados, autenticação, isolamento por família, sistema de design lúdico e decisões pendentes de aprovação.
+- [`docs/architecture.md`](docs/architecture.md) — stack, modelo de dados, autenticação, isolamento por família, sistema de design lúdico decisões tomadas e operação.
 - [`docs/features.md`](docs/features.md) — escopo do MVP, roteiro pós-MVP e ordem de construção.
 
 ## Resumo
@@ -17,6 +17,7 @@ Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanha
 - Histórico de créditos e débitos imutável, com estorno em vez de edição.
 - Uma meta de poupança por criança: o saldo total alcança o alvo, a meta congela e não reabre.
 - PWA, mobile first, interface lúdica para 4 a 16 anos.
+- Português, inglês e espanhol, detectados pelo navegador.
 - Hospedagem e banco em planos gratuitos: Next.js na Vercel, Postgres no Supabase.
 
 ## Licença

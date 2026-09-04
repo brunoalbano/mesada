@@ -1,7 +1,7 @@
 # Cofrinho — Escopo de Funcionalidades
 
-**Status:** aprovado
-**Versão:** 1.0
+**Status:** aprovado, revisado
+**Versão:** 2.0
 **Data:** 2026-09-04
 
 Complementa `docs/architecture.md`. Este documento define o que entra no MVP, o que fica para depois e por quê.
@@ -74,29 +74,43 @@ O pai administra os links: cria com rótulo ("tablet da sala"), define validade 
 
 A criança vê: saldo, histórico e metas. A criança nunca cria nem altera lançamento no MVP.
 
-### 1.7 Interface lúdica
+### 1.7 Idioma
+
+- Interface em **português, inglês e espanhol**.
+- Idioma detectado pelo `Accept-Language` do navegador na primeira visita, resolvido no servidor.
+- Troca manual a qualquer momento, gravada em cookie e no perfil do responsável.
+- Idioma da criança herda o da família; o responsável pode fixar um por criança.
+- Datas, números e plurais formatados por `Intl` no idioma resolvido.
+- **A moeda não muda com o idioma.** Continua sendo a da família, sempre BRL no MVP.
+- O nome "Cofrinho" não é traduzido.
+
+### 1.8 Interface lúdica
 
 - Mobile first, uma mão, alvos de toque grandes.
-- Modo Pequeno e Modo Grande, conforme `docs/architecture.md`, seção 6.
+- Modo Pequeno e Modo Grande. No MVP o Modo Grande é variação de tipografia, vocabulário e densidade sobre o mesmo layout, não uma segunda interface.
 - Cofrinho ilustrado, avatares, ícones e textos lúdicos nos placeholders e estados vazios.
 - Animação de moeda no crédito e o cofrinho transbordando na meta atingida, com respeito a `prefers-reduced-motion`.
 - Contraste AA, texto a partir de 16 px, entrada e saída distinguidas por sinal, ícone e palavra, além da cor.
 
-### 1.8 PWA
+### 1.9 PWA
 
 - Instalável em Android e iOS, com ícone próprio e tela de abertura.
 - Onboarding que ensina a adicionar à tela de início.
 - Leitura offline do último saldo, histórico e metas conhecidos, com carimbo de atualização.
 
-### 1.9 Fora do MVP, mas obrigatório junto com ele
+### 1.10 Fora do MVP, mas obrigatório junto com ele
 
 Itens sem os quais o MVP não pode ir ao ar:
 
-- Migrations SQL versionadas, com as policies RLS incluídas.
-- Testes de fluxo crítico: lançamento, estorno, meta alcançada, isolamento entre famílias, acesso por link expirado e revogado.
+- Migrations SQL versionadas, com índices, RLS ligada nas nove tabelas, triggers de estorno e de meta, e o Custom Access Token Hook.
+- Backup semanal por GitHub Action, com restauração testada antes do lançamento. O plano gratuito do Supabase não tem backup nem PITR.
+- Faxina agendada de usuários anônimos órfãos, no mesmo workflow que evita a pausa do projeto.
+- Página de privacidade, exclusão de conta e transferência de `owner` ao sair da família.
+- Traduções completas em `pt`, `en` e `es`, com build falhando em chave faltante.
+- Testes de fluxo crítico: lançamento, estorno, meta alcançada, reabertura por estorno, isolamento entre famílias, acesso por link expirado, e sessão viva de link revogado.
 - GitHub Action que evita a pausa do projeto Supabase por inatividade.
 - Página de privacidade explicando o tratamento mínimo de dados de menores.
-- Ícones do PWA e ilustrações do cofrinho nos quatro estados (vazio, pouco, cheio, transbordando).
+- Ícones do PWA, ilustrações do cofrinho nos quatro estados e oito avatares. São cerca de 14 ilustrações no caminho crítico.
 
 ---
 
@@ -175,15 +189,18 @@ Não entram nem no MVP nem no roteiro atual:
 
 ## Parte 4 — Ordem de construção do MVP
 
-1. Migrations, RLS e sementes de dados.
-2. Autenticação do responsável, família e convite de responsável.
-3. Cadastro de criança.
-4. Lançamento, estorno, saldo e histórico.
-5. Meta de poupança.
-6. Link da criança e a tela da criança.
-7. Conta Google da criança, opcional.
-8. Camada lúdica: mascote, modos, animação, avatares.
-9. PWA, offline de leitura e onboarding de instalação.
-10. Testes de fluxo crítico e publicação.
+0. Migrations: schema, índices, RLS nas nove tabelas, helpers `security definer`, triggers de estorno e de meta, Custom Access Token Hook. Variáveis de ambiente e fluxo de migration no CI.
+1. Autenticação do responsável. Criar família por função `security definer`.
+2. Convite de responsável: emissão, uso único atômico, revogação, saída de família com transferência de `owner`.
+3. Cadastro de criança, edição, arquivamento.
+4. Lançamento, estorno, saldo e histórico com autoria e filtro por período.
+5. Meta de poupança, com o trigger que a marca como alcançada e o estorno que a reabre.
+6. Link da criança: geração com rótulo e validade, troca por sessão, revogação que mata a sessão viva, limite de taxa em Postgres, tela da criança.
+7. Conta Google da criança, opcional, por convite emitido pelo pai.
+8. Idioma: `next-intl`, três arquivos de mensagem, resolução por `Accept-Language`, manifesto dinâmico.
+9. Camada lúdica: cofrinho ilustrado nos quatro estados, oito avatares, modos, animação.
+10. PWA: manifesto, service worker com `/c/*` na denylist, leitura offline, onboarding de instalação.
+11. Backup, faxina agendada, keep-alive com commit, estado degradado de banco pausado, página de privacidade.
+12. Testes de fluxo crítico e publicação.
 
-Cada etapa é entregável e testável isoladamente. As etapas 1 a 6 já formam um produto usável por uma família.
+Cada etapa é entregável e testável isoladamente. As etapas 0 a 6 já formam um produto usável por uma família.
