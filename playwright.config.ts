@@ -8,6 +8,14 @@ import { defineConfig, devices } from '@playwright/test'
  * configuradas, para que a suíte continue útil em máquina de quem acabou de
  * clonar o repositório.
  */
+/**
+ * Em ambiente com proxy de saída obrigatório, nem o navegador nem o cliente
+ * HTTP do Playwright leem HTTPS_PROXY sozinhos. Sem isto as requisições
+ * falham de formas que não parecem rede: cabeçalho `undefined`, página em
+ * branco, tempo esgotado.
+ */
+const proxy = process.env.HTTPS_PROXY ?? process.env.https_proxy
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -25,6 +33,15 @@ export default defineConfig({
     launchOptions: process.env.CHROMIUM_PATH
       ? { executablePath: process.env.CHROMIUM_PATH }
       : undefined,
+    ...(proxy
+      ? {
+          proxy: { server: proxy },
+          // O proxy reassina o TLS com uma autoridade própria, que o navegador
+          // do teste não conhece. Aceitável aqui, e só aqui: vale para o
+          // navegador do teste, nunca para o produto.
+          ignoreHTTPSErrors: true,
+        }
+      : {}),
   },
   webServer: process.env.BASE_URL
     ? undefined

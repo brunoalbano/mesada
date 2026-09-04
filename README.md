@@ -43,6 +43,14 @@ Se a máquina já tem um Chromium do Playwright, aponte para ele em vez de baixa
 CHROMIUM_PATH=/caminho/para/chrome npm run test:e2e
 ```
 
+Contra uma URL remota, use `BASE_URL`:
+
+```bash
+BASE_URL=https://mesada-git-<branch>-<time>.vercel.app npm run test:e2e
+```
+
+Prefira o alias da branch (`mesada-git-…`) ao endereço com hash do deploy: o hash muda a cada push, o alias sempre aponta para o último build daquela branch.
+
 O fluxo autenticado não roda em ambiente com proxy de saída obrigatório: o servidor Next valida a sessão chamando o Supabase pelo `fetch` do Node, que ignora `HTTP_PROXY` e `HTTPS_PROXY`. O sintoma é enganoso — a página vai para `/entrar` como se a sessão não existisse, sem erro nenhum.
 
 ## Banco de dados
