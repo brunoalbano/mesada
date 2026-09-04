@@ -7,6 +7,7 @@ import { Cofrinho, estadoPorProgresso } from '@/components/Cofrinho'
 import { FormularioLancamento } from './FormularioLancamento'
 import { Historico } from './Historico'
 import { PainelMeta } from './PainelMeta'
+import { PainelAcesso } from './PainelAcesso'
 
 export default async function Crianca({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -58,6 +59,14 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
     .eq('user_id', user.id)
     .maybeSingle()
 
+  const { data: contas } = souResponsavel
+    ? await supabase
+        .from('child_identities')
+        .select('auth_user_id, provider, linked_at')
+        .eq('child_id', id)
+        .is('revoked_at', null)
+    : { data: [] }
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 py-8">
       <header className="flex items-center gap-3">
@@ -89,6 +98,10 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
 
       {souResponsavel && (
         <FormularioLancamento childId={crianca.id} arquivada={Boolean(crianca.archived_at)} />
+      )}
+
+      {souResponsavel && (
+        <PainelAcesso childId={crianca.id} nome={crianca.name} contas={contas ?? []} />
       )}
 
       <Historico

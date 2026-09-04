@@ -5,6 +5,7 @@ import { Cofrinho } from '@/components/Cofrinho'
 import { FormularioFamilia } from './FormularioFamilia'
 import { SeletorIdioma } from './SeletorIdioma'
 import { Sair } from './Sair'
+import { ConviteInstalacao } from '@/components/ConviteInstalacao'
 
 export default async function Familias() {
   const supabase = await clienteServidor()
@@ -67,6 +68,8 @@ export default async function Familias() {
       )}
 
       <FormularioFamilia />
+
+      <ConviteInstalacao />
     </main>
   )
 }

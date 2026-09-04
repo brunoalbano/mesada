@@ -4,7 +4,8 @@
     "salvar": "Save",
     "cancelar": "Cancel",
     "carregando": "Loading…",
-    "erroInesperado": "Something went wrong. Please try again."
+    "erroInesperado": "Something went wrong. Please try again.",
+    "copiar": "Copy"
   },
   "idioma": {
     "rotulo": "Language",
@@ -104,5 +105,25 @@
     "metaAlcancada": "You did it!",
     "metaJaExiste": "There is already a goal in progress.",
     "cancelarMeta": "Cancel goal"
+  },
+  "acesso": {
+    "titulo": "{nome}'s access",
+    "semConta": "{nome} has no account linked yet.",
+    "gerar": "Create an access invite",
+    "gerando": "Creating…",
+    "copieAgora": "Copy the link now. It won't be shown again.",
+    "validade": "Valid for 7 days, single use.",
+    "desvincular": "Unlink",
+    "porEmail": "By email",
+    "semPermissao": "Only a grown-up in the family can do this."
+  },
+  "manifesto": {
+    "descricao": "Your kids' allowance, without the notebook or the spreadsheet."
+  },
+  "instalar": {
+    "titulo": "Keep Mesada within reach",
+    "ios": "Tap Share, then “Add to Home Screen”.",
+    "android": "Open the browser menu, then “Install app”.",
+    "depois": "Not now"
   }
 }

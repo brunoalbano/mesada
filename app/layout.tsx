@@ -11,6 +11,12 @@ const corpo = Nunito({ subsets: ['latin'], variable: '--fonte-corpo', display: '
 export const metadata: Metadata = {
   title: 'Mesada',
   description: 'A mesada dos seus filhos, sem caderno e sem planilha.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Mesada', statusBarStyle: 'default' },
+  icons: {
+    icon: [{ url: '/favicon-32.png', sizes: '32x32', type: 'image/png' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+  },
 }
 
 export const viewport: Viewport = {

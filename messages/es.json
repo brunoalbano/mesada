@@ -4,7 +4,8 @@
     "salvar": "Guardar",
     "cancelar": "Cancelar",
     "carregando": "Cargando…",
-    "erroInesperado": "Algo salió mal. Inténtalo de nuevo."
+    "erroInesperado": "Algo salió mal. Inténtalo de nuevo.",
+    "copiar": "Copiar"
   },
   "idioma": {
     "rotulo": "Idioma",
@@ -104,5 +105,25 @@
     "metaAlcancada": "¡Lo lograste!",
     "metaJaExiste": "Ya hay una meta en curso.",
     "cancelarMeta": "Cancelar meta"
+  },
+  "acesso": {
+    "titulo": "Acceso de {nome}",
+    "semConta": "{nome} todavía no tiene una cuenta vinculada.",
+    "gerar": "Crear invitación de acceso",
+    "gerando": "Creando…",
+    "copieAgora": "Copia el enlace ahora. No se muestra de nuevo.",
+    "validade": "Vale 7 días y sirve una sola vez.",
+    "desvincular": "Desvincular",
+    "porEmail": "Por correo",
+    "semPermissao": "Solo un adulto de la familia puede hacerlo."
+  },
+  "manifesto": {
+    "descricao": "La mesada de tus hijos, sin cuaderno ni planilla."
+  },
+  "instalar": {
+    "titulo": "Ten Mesada a mano",
+    "ios": "Toca Compartir y luego “Añadir a pantalla de inicio”.",
+    "android": "Abre el menú del navegador y luego “Instalar aplicación”.",
+    "depois": "Ahora no"
   }
 }

@@ -109,7 +109,7 @@ Itens sem os quais o MVP não pode ir ao ar:
 - Testes de fluxo crítico: lançamento, estorno, meta alcançada, reabertura por estorno, isolamento entre famílias, convite de uso único, e claim cortada ao desvincular a conta.
 - GitHub Action que evita a pausa do projeto Supabase por inatividade.
 - Página de privacidade explicando o tratamento mínimo de dados de menores.
-- Ícones do PWA, ilustrações do cofrinho nos quatro estados e oito avatares. São cerca de 14 ilustrações no caminho crítico.
+- Ilustrações definitivas do cofrinho nos quatro estados e dos oito avatares. Os ícones do PWA já são gerados por `npm run icones` a partir de um SVG único.
 
 ---
 

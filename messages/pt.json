@@ -4,7 +4,8 @@
     "salvar": "Salvar",
     "cancelar": "Cancelar",
     "carregando": "Carregando…",
-    "erroInesperado": "Algo deu errado. Tente de novo."
+    "erroInesperado": "Algo deu errado. Tente de novo.",
+    "copiar": "Copiar"
   },
   "idioma": {
     "rotulo": "Idioma",
@@ -104,5 +105,25 @@
     "metaAlcancada": "Conseguiu!",
     "metaJaExiste": "Já existe uma meta em andamento.",
     "cancelarMeta": "Cancelar meta"
+  },
+  "acesso": {
+    "titulo": "Acesso de {nome}",
+    "semConta": "{nome} ainda não tem conta ligada ao perfil.",
+    "gerar": "Criar convite de acesso",
+    "gerando": "Criando…",
+    "copieAgora": "Copie o link agora. Ele não aparece de novo.",
+    "validade": "Vale por 7 dias e serve uma vez só.",
+    "desvincular": "Desvincular",
+    "porEmail": "Por e-mail",
+    "semPermissao": "Só um responsável da família pode fazer isso."
+  },
+  "manifesto": {
+    "descricao": "A mesada dos seus filhos, sem caderno e sem planilha."
+  },
+  "instalar": {
+    "titulo": "Deixe o Mesada à mão",
+    "ios": "Toque em Compartilhar e depois em “Adicionar à Tela de Início”.",
+    "android": "Toque no menu do navegador e depois em “Instalar aplicativo”.",
+    "depois": "Agora não"
   }
 }
