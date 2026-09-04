@@ -59,9 +59,23 @@ Depois, no painel:
 
 ## Detalhe que a aplicação precisa saber
 
-`invites` **não aceita `select *`**. O `token_hash` é a credencial em si, e a única forma de escondê-lo de uma sessão de usuário é remover o `SELECT` da tabela e concedê-lo coluna a coluna. Liste as colunas.
+`invites` **não aceita `select *`**, e também **não aceita retorno de representação no insert**. O `token_hash` é a credencial em si, e a única forma de escondê-lo de uma sessão de usuário é remover o `SELECT` da tabela e concedê-lo coluna a coluna. Revogar apenas a coluna não adianta enquanto existe o `SELECT` da tabela inteira, porque o privilégio mais amplo prevalece.
 
-Motivo: revogar apenas a coluna não adianta enquanto existe o `SELECT` da tabela inteira, porque o privilégio mais amplo prevalece.
+Duas consequências práticas:
+
+```ts
+// errado: seleciona colunas que a sessão não pode ler
+await supabase.from('invites').select('*')
+
+// errado: .select() depois do insert vira RETURNING *, que também toca token_hash
+await supabase.from('invites').insert(linha).select()
+
+// certo: listar colunas, e inserir sem pedir a linha de volta
+await supabase.from('invites').select('id, email, role, expires_at')
+await supabase.from('invites').insert(linha)
+```
+
+Pelo REST direto, o equivalente é `Prefer: return=minimal` no insert. `return=representation` executa `RETURNING *` e responde `42501 permission denied for table invites`, com um `hint` sugerindo conceder `SELECT` na tabela — que é exatamente o que não se deve fazer.
 
 ## O que os testes provam
 

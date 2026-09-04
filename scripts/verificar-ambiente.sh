@@ -99,6 +99,7 @@ uuid() { python3 -c "import uuid;print(uuid.uuid4())"; }
 echo "abrindo sessões"
 TA=$(entrar "$EMAIL_A" "$SENHA_A")
 TB=$(entrar "$EMAIL_B" "$SENHA_B")
+SUB_A=$(echo "${TA:-x.x.x}" | claim sub)
 
 if [ -z "$TA" ] || [ -z "$TB" ]; then
   echo ""
@@ -143,7 +144,7 @@ checar "estranho não cadastra criança em família alheia" "$r" "42501"
 # --- lançamento: o servidor decide autoria e moeda --------------------------
 tx=$(uuid)
 res=$(req "$TA" POST "transactions" \
-  "{\"id\":\"$tx\",\"child_id\":\"$kid\",\"amount_cents\":2000,\"reason\":\"Mesada\",\"created_by_name\":\"NOME FALSO\",\"currency\":\"JPY\"}")
+  "{\"id\":\"$tx\",\"child_id\":\"$kid\",\"amount_cents\":2000,\"reason\":\"Mesada\",\"created_by\":\"$SUB_A\",\"created_by_name\":\"NOME FALSO\",\"currency\":\"JPY\"}")
 checar "created_by_name vem do perfil, não do cliente" "$(echo "$res" | campo created_by_name)" "$nome"
 checar "moeda vem da família, não do cliente" "$(echo "$res" | campo currency)" "BRL"
 
@@ -157,31 +158,33 @@ s=$(req "$TA" GET "child_balances?child_id=eq.$kid&select=balance_cents" | campo
 checar "saldo é a soma do razão" "$s" "2000"
 
 # --- meta -------------------------------------------------------------------
-meta=$(req "$TA" POST "goals" "{\"child_id\":\"$kid\",\"title\":\"Bicicleta\",\"target_cents\":3000}" | campo id)
+meta=$(req "$TA" POST "goals" "{\"child_id\":\"$kid\",\"title\":\"Bicicleta\",\"target_cents\":3000,\"created_by\":\"$SUB_A\"}" | campo id)
 checar "meta nasce ativa abaixo do alvo" \
   "$(req "$TA" GET "goals?id=eq.$meta&select=status" | campo status)" "active"
 
-r=$(req "$TA" POST "goals" "{\"child_id\":\"$kid\",\"title\":\"Outra\",\"target_cents\":100}" | campo code)
+# Alvo ACIMA do saldo de propósito: com alvo abaixo, a meta nasceria
+# 'reached' pelo trigger e não violaria o índice, que só cobre 'active'.
+r=$(req "$TA" POST "goals" "{\"child_id\":\"$kid\",\"title\":\"Outra\",\"target_cents\":900000,\"created_by\":\"$SUB_A\"}" | campo code)
 checar "só uma meta ativa por criança" "$r" "23505"
 
 tx2=$(uuid)
 req "$TA" POST "transactions" \
-  "{\"id\":\"$tx2\",\"child_id\":\"$kid\",\"amount_cents\":1000,\"reason\":\"Mesada\",\"created_by_name\":\"x\"}" > /dev/null
+  "{\"id\":\"$tx2\",\"child_id\":\"$kid\",\"amount_cents\":1000,\"reason\":\"Mesada\",\"created_by\":\"$SUB_A\",\"created_by_name\":\"x\"}" > /dev/null
 checar "trigger marca a meta como alcançada ao cruzar o alvo" \
   "$(req "$TA" GET "goals?id=eq.$meta&select=status" | campo status)" "reached"
 checar "e registra qual transação a alcançou" \
   "$(req "$TA" GET "goals?id=eq.$meta&select=reached_by_transaction_id" | campo reached_by_transaction_id)" "$tx2"
 
 r=$(req "$TA" PATCH "goals?id=eq.$meta" '{"target_cents":1}' | campo message)
-checar "meta alcançada não é reescrita à mão" "${r:0:24}" "meta $meta" 2>/dev/null || true
+checar "meta alcançada não é reescrita à mão" "$(echo "$r" | grep -q 'não muda mais' && echo recusado)" "recusado"
 
 # --- estorno ----------------------------------------------------------------
 r=$(req "$TA" POST "transactions" \
-  "{\"id\":\"$(uuid)\",\"child_id\":\"$kid\",\"amount_cents\":-500,\"reason\":\"Torto\",\"reverses_id\":\"$tx2\",\"created_by_name\":\"x\"}" | campo message)
+  "{\"id\":\"$(uuid)\",\"child_id\":\"$kid\",\"amount_cents\":-500,\"reason\":\"Torto\",\"reverses_id\":\"$tx2\",\"created_by\":\"$SUB_A\",\"created_by_name\":\"x\"}" | campo message)
 checar "estorno com valor diferente do oposto é recusado" "${r:0:38}" "estorno deve ter valor oposto exato: e"
 
 req "$TA" POST "transactions" \
-  "{\"id\":\"$(uuid)\",\"child_id\":\"$kid\",\"amount_cents\":-1000,\"reason\":\"Estorno\",\"reverses_id\":\"$tx2\",\"created_by_name\":\"x\"}" > /dev/null
+  "{\"id\":\"$(uuid)\",\"child_id\":\"$kid\",\"amount_cents\":-1000,\"reason\":\"Estorno\",\"reverses_id\":\"$tx2\",\"created_by\":\"$SUB_A\",\"created_by_name\":\"x\"}" > /dev/null
 checar "estorno da transação que alcançou reabre a meta" \
   "$(req "$TA" GET "goals?id=eq.$meta&select=status" | campo status)" "active"
 
@@ -192,8 +195,12 @@ checar "token_hash é ilegível por sessão de usuário" "$r" "42501"
 # --- hook do JWT ------------------------------------------------------------
 # A conta B vira a criança, por convite emitido por A.
 sub_a=$(echo "$TA" | claim sub)
-req "$TA" POST "invites" \
-  "{\"family_id\":\"$fam\",\"kind\":\"child\",\"child_id\":\"$kid\",\"token_hash\":\"\\\\xabcdef01\",\"expires_at\":\"2035-01-01T00:00:00Z\",\"created_by\":\"$sub_a\"}" > /dev/null
+# Sem return=representation: RETURNING * exigiria SELECT em token_hash, que
+# nenhuma sessão de usuário tem. Inserir funciona; ler de volta é que não.
+curl -s --max-time 20 -X POST -H "apikey: $K" -H "Authorization: Bearer $TA" \
+  -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+  -d "{\"family_id\":\"$fam\",\"kind\":\"child\",\"child_id\":\"$kid\",\"token_hash\":\"\\\\xabcdef01\",\"expires_at\":\"2035-01-01T00:00:00Z\",\"created_by\":\"$sub_a\"}" \
+  "$B/rest/v1/invites" > /dev/null
 curl -s --max-time 20 -X POST -H "apikey: $K" -H "Authorization: Bearer $TB" \
   -H "Content-Type: application/json" \
   -d '{"p_token_hash":"\\xabcdef01","p_provider":"email"}' \
@@ -205,7 +212,7 @@ checar "hook injeta child_id no JWT de quem virou criança" "$(echo "$TB2" | cla
 checar "e o escopo é somente leitura" "$(echo "$TB2" | claim child_scope)" "read"
 checar "criança enxerga exatamente um perfil: o dela" "$(req "$TB2" GET "children?select=id" | contar)" "1"
 r=$(req "$TB2" POST "transactions" \
-  "{\"id\":\"$(uuid)\",\"child_id\":\"$kid\",\"amount_cents\":100000,\"reason\":\"me dei mesada\",\"created_by_name\":\"x\"}" | campo code)
+  "{\"id\":\"$(uuid)\",\"child_id\":\"$kid\",\"amount_cents\":100000,\"reason\":\"me dei mesada\",\"created_by\":\"$(echo "$TB2" | claim sub)\",\"created_by_name\":\"x\"}" | campo code)
 checar "criança não lança nada" "$r" "42501"
 
 echo ""
