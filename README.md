@@ -1,8 +1,8 @@
-# Mesada
+# Cofrinho
 
-Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanharem saldo, histórico e metas de poupança.
+Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanharem saldo, histórico e a meta de poupança.
 
-**Status: em definição.** Nenhum código foi escrito ainda. A arquitetura e o escopo estão em revisão.
+**Status: arquitetura aprovada, implementação não iniciada.**
 
 ## Documentos
 
@@ -15,9 +15,9 @@ Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanha
 - Uma família nunca vê os dados de outra.
 - A criança acessa pelo link próprio, sem precisar de conta. Conta Google é opcional.
 - Histórico de créditos e débitos imutável, com estorno em vez de edição.
-- Uma meta de poupança por criança: o saldo total alcança o alvo e a meta congela.
+- Uma meta de poupança por criança: o saldo total alcança o alvo, a meta congela e não reabre.
 - PWA, mobile first, interface lúdica para 4 a 16 anos.
-- Hospedagem e banco em planos gratuitos.
+- Hospedagem e banco em planos gratuitos: Next.js na Vercel, Postgres no Supabase.
 
 ## Licença
 

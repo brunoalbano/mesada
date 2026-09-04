@@ -1,10 +1,10 @@
-# Mesada — Documento de Arquitetura e Design
+# Cofrinho — Documento de Arquitetura e Design
 
-**Status:** proposta para revisão
-**Versão:** 0.1
+**Status:** aprovado
+**Versão:** 1.0
 **Data:** 2026-09-04
 
-Este documento descreve a arquitetura, o modelo de dados, o modelo de autenticação e o sistema de design do aplicativo. Ele precisa ser aprovado antes de qualquer código ser escrito. As decisões em aberto estão listadas na seção "Decisões pendentes de aprovação", no final.
+Este documento descreve a arquitetura, o modelo de dados, o modelo de autenticação e o sistema de design do aplicativo **Cofrinho**. As decisões de produto que estavam em aberto foram fechadas e estão registradas na seção 8. O repositório continua chamado `mesada`; o produto chama Cofrinho.
 
 ---
 
@@ -98,7 +98,7 @@ access_tokens (
   token_hash    bytea not null unique,     -- SHA-256 do token; o token em claro nunca é salvo
   label         text,                      -- "tablet da sala", "celular da avó"
   can_request   boolean not null default false,
-  expires_at    timestamptz not null,
+  expires_at    timestamptz not null,   -- padrão de 365 dias
   revoked_at    timestamptz,
   last_used_at  timestamptz,
   created_by    uuid not null references auth.users(id),
@@ -244,7 +244,7 @@ As mitigações abaixo são cumulativas e todas fazem parte do MVP:
 3. O token fica em segmento de caminho (`/c/<token>`), nunca em query string. Segmentos de caminho vazam menos em logs e ferramentas de analytics.
 4. Na primeira visita, o servidor troca o token por um cookie de sessão `HttpOnly`, `Secure`, `SameSite=Lax`, e o cliente limpa a URL com `history.replaceState`. O token deixa a barra de endereços.
 5. O escopo padrão é somente leitura. O token nunca cria, edita ou estorna lançamento.
-6. `expires_at` obrigatório, com padrão de 180 dias. O pai revoga e gera outro a qualquer momento, e vê `last_used_at` de cada link.
+6. `expires_at` obrigatório, com padrão de 365 dias. O pai revoga e gera outro a qualquer momento, e vê `last_used_at` de cada link.
 7. Cabeçalho `Referrer-Policy: no-referrer` no aplicativo inteiro.
 8. Limite de taxa por token na rota de troca, para impedir varredura de tokens.
 
@@ -286,7 +286,7 @@ lib/
   supabase/
   auth/
 components/
-  ludic/                    # mascote, moeda, confete, avatares
+  ludic/                    # cofrinho, moeda, confete, avatares
 supabase/
   migrations/               # SQL versionado, incluindo as policies RLS
 ```
@@ -306,8 +306,8 @@ O público vai de 4 a 16 anos. Um único visual não atende as duas pontas: o qu
 | Leitura exigida | Mínima. Ícone e número grandes | Normal |
 | Saldo | Número enorme, moedas ilustradas | Número grande, tipografia limpa |
 | Histórico | Lista de ícones com valor colorido | Lista com data, motivo e autor |
-| Meta | Cofrinho que enche, mascote comemora | Barra de progresso e valor que falta |
-| Animação | Generosa: moeda cai, confete, mascote pula | Discreta: transição e confete na conquista |
+| Meta | Cofrinho que enche, cofrinho transborda | Barra de progresso e valor que falta |
+| Animação | Generosa: moeda cai, confete, cofrinho balança | Discreta: transição e confete na conquista |
 | Som | Opcional, desligado por padrão | Desligado |
 | Vocabulário | "Você ganhou", "Você gastou", "Falta pouco" | "Crédito", "Débito", "Meta" |
 
@@ -315,9 +315,10 @@ O modo é escolhido pela data de nascimento e pode ser sobrescrito pelo pai em `
 
 ### 6.2 Identidade visual
 
-- **Nome do aplicativo:** proposta **Mesada**, com o mascote **Poupi**, um porquinho-cofre. Alternativas para decidir: Cofrinho, Poupi, Guardinha, Mealheiro. *Precisa de aprovação.*
-- **Mascote:** Poupi aparece no ícone, no estado vazio, na comemoração de meta e nas telas de erro. Ele é o elemento que faz a criança de 4 anos reconhecer o aplicativo sem saber ler.
-- **Ícone do aplicativo:** Poupi sobre círculo de cor sólida, sem texto. Legível a 48 px. Conjunto completo de ícones maskable para instalação em Android e iOS.
+- **Nome do aplicativo:** **Cofrinho**.
+- **Elemento central:** o próprio cofrinho, ilustrado. Não existe mascote nomeado. O cofrinho aparece no ícone, no estado vazio, no card de saldo, na comemoração de meta e nas telas de erro. Ele é o que faz a criança de 4 anos reconhecer o aplicativo sem saber ler.
+- **Estados do cofrinho:** vazio, com pouco, cheio e transbordando de moedas. O estado acompanha o progresso da meta ativa, ou o saldo quando não há meta. É a representação visual principal do Modo Pequeno.
+- **Ícone do aplicativo:** o cofrinho sobre círculo de cor sólida, sem texto. Legível a 48 px. Conjunto completo de ícones maskable para instalação em Android e iOS.
 - **Paleta:** base roxo-índigo; acentos amarelo-moeda, verde-entrada e coral-saída. Entrada e saída **nunca se distinguem só pela cor** — sempre acompanham sinal, ícone e palavra, porque daltonismo é comum e a criança pequena ainda não lê o sinal isolado.
 - **Tipografia:** Baloo 2 para títulos e valores (arredondada, alegre), Nunito para texto corrido. Ambas no Google Fonts, com fallback de sistema.
 - **Ilustração:** avatares de animais em estilo plano, conjunto fechado de cerca de 16 opções. A criança escolhe o seu.
@@ -328,7 +329,7 @@ O modo é escolhido pela data de nascimento e pode ser sobrescrito pelo pai em `
 - Área de toque mínima de 48 por 48 px em toda a interface da criança.
 - Contraste mínimo AA (4.5:1) para texto; os valores em destaque ficam acima disso.
 - Corpo de texto nunca abaixo de 16 px; valores monetários acima de 32 px.
-- `prefers-reduced-motion` desliga confete e movimento do mascote.
+- `prefers-reduced-motion` desliga confete e movimento do cofrinho.
 - Toda animação tem uma leitura estática equivalente. Nenhuma informação existe só no movimento.
 - Navegação por teclado e rótulos ARIA em todos os controles, para leitor de tela.
 
@@ -343,14 +344,17 @@ O modo é escolhido pela data de nascimento e pode ser sobrescrito pelo pai em `
 
 ---
 
-## 8. Decisões pendentes de aprovação
+## 8. Decisões tomadas
 
-1. **Nome e mascote.** Proposta: aplicativo "Mesada", mascote "Poupi", o porquinho. Confirmar ou escolher outro.
-2. **Quem cria a meta.** Proposta: o pai cria e edita; a criança apenas acompanha. Alternativa: a criança propõe e o pai aprova.
-3. **Meta alcançada com saldo em queda.** Proposta: a meta continua `reached` para sempre, conforme a seção 3.3. Alternativa: reabrir a meta quando o saldo cai abaixo do alvo, o que consideramos frustrante para a criança.
-4. **Validade padrão do link da criança.** Proposta: 180 dias, renovável em um toque.
-5. **Moeda.** Proposta: somente BRL no MVP, com a coluna de moeda já prevista para depois.
-6. **Domínio.** `mesada.vercel.app` no início, ou domínio próprio desde já.
+Fechadas em 2026-09-04. Registradas aqui para que a razão de cada uma não se perca.
+
+1. **Nome:** o produto chama **Cofrinho**. Sem mascote nomeado; o cofrinho ilustrado é o elemento central da identidade. O repositório continua `mesada`.
+2. **Meta de poupança:** uma única meta ativa por criança, com alvo sobre o saldo total. Sem reserva de valor. Ver seção 3.3.
+3. **Quem cria a meta:** somente o responsável cria, edita e cancela. A criança acompanha. Isso mantém o link da criança estritamente somente leitura no MVP, que é a mitigação mais forte contra vazamento de token. Criança propor meta é item pós-MVP.
+4. **Meta alcançada:** ao atingir o alvo, a meta congela em `reached` para sempre. Queda posterior de saldo não reabre a meta e o progresso permanece em 100%. A criança não perde a conquista por gastar depois.
+5. **Validade do link da criança:** 365 dias, renovável em um toque. O pai vê `last_used_at` de cada link e revoga a qualquer momento. A janela maior foi aceita porque as outras sete mitigações da seção 4.5 continuam valendo, e um link que quebra sozinho no meio do ano faz o pai desistir do produto.
+6. **Moeda:** somente BRL no MVP. A coluna de moeda por família fica prevista no modelo, então multi-moeda não exige migração destrutiva.
+7. **Domínio:** `cofrinho.vercel.app` no início. Domínio próprio é configuração na Vercel, não mudança de código.
 
 ---
 

@@ -1,7 +1,7 @@
-# Mesada — Escopo de Funcionalidades
+# Cofrinho — Escopo de Funcionalidades
 
-**Status:** proposta para revisão
-**Versão:** 0.1
+**Status:** aprovado
+**Versão:** 1.0
 **Data:** 2026-09-04
 
 Complementa `docs/architecture.md`. Este documento define o que entra no MVP, o que fica para depois e por quê.
@@ -52,13 +52,13 @@ Um critério auxiliar: se o recurso pode ser adicionado depois sem migração de
 
 Uma meta por criança de cada vez, deliberadamente simples.
 
-- Criar meta com título, ícone e valor-alvo. O alvo é o valor que o **saldo total** precisa alcançar.
+- O **responsável** cria a meta com título, ícone e valor-alvo. O alvo é o valor que o **saldo total** precisa alcançar. A criança acompanha, não cria nem cancela.
 - No máximo uma meta ativa por criança, garantido por índice único no banco.
 - Progresso calculado do saldo atual contra o alvo: quanto já tem e quanto falta.
 - Sem reserva, sem alocação, sem saldo bloqueado. O dinheiro da meta é o próprio saldo, e a criança continua livre para gastar.
-- Saldo alcança o alvo: comemoração com o mascote e confete, a meta passa a "alcançada" e **o cálculo para**. Se o saldo cair depois, a meta continua alcançada e o progresso continua em 100%. Meta alcançada nunca reabre.
+- Saldo alcança o alvo: o cofrinho transborda, com confete, a meta passa a "alcançada" e **o cálculo para**. Se o saldo cair depois, a meta continua alcançada e o progresso continua em 100%. Meta alcançada nunca reabre.
 - Alcançar a meta não movimenta dinheiro. Comprar o objetivo é um débito comum no histórico.
-- Cancelar a meta a qualquer momento. Depois de alcançada ou cancelada, criar outra.
+- O responsável cancela a meta a qualquer momento. Depois de alcançada ou cancelada, cria outra.
 - Metas antigas ficam no histórico da criança.
 
 ### 1.6 Acesso da criança
@@ -70,7 +70,7 @@ Duas formas, ambas no MVP, levando à mesma tela:
 
 Ambas resolvem para o mesmo perfil de criança e mostram exatamente os mesmos dados. Uma criança pode ter as duas ao mesmo tempo, ou só o link.
 
-O pai administra os links: cria com rótulo ("tablet da sala"), vê quando cada um foi usado pela última vez, revoga e gera outro.
+O pai administra os links: cria com rótulo ("tablet da sala"), define validade com padrão de 365 dias, vê quando cada um foi usado pela última vez, revoga e gera outro.
 
 A criança vê: saldo, histórico e metas. A criança nunca cria nem altera lançamento no MVP.
 
@@ -78,8 +78,8 @@ A criança vê: saldo, histórico e metas. A criança nunca cria nem altera lan�
 
 - Mobile first, uma mão, alvos de toque grandes.
 - Modo Pequeno e Modo Grande, conforme `docs/architecture.md`, seção 6.
-- Mascote, avatares ilustrados, ícones e textos lúdicos nos placeholders e estados vazios.
-- Animação de moeda no crédito e confete na meta atingida, com respeito a `prefers-reduced-motion`.
+- Cofrinho ilustrado, avatares, ícones e textos lúdicos nos placeholders e estados vazios.
+- Animação de moeda no crédito e o cofrinho transbordando na meta atingida, com respeito a `prefers-reduced-motion`.
 - Contraste AA, texto a partir de 16 px, entrada e saída distinguidas por sinal, ícone e palavra, além da cor.
 
 ### 1.8 PWA
@@ -96,6 +96,7 @@ Itens sem os quais o MVP não pode ir ao ar:
 - Testes de fluxo crítico: lançamento, estorno, meta alcançada, isolamento entre famílias, acesso por link expirado e revogado.
 - GitHub Action que evita a pausa do projeto Supabase por inatividade.
 - Página de privacidade explicando o tratamento mínimo de dados de menores.
+- Ícones do PWA e ilustrações do cofrinho nos quatro estados (vazio, pouco, cheio, transbordando).
 
 ---
 
@@ -107,9 +108,9 @@ Em ordem sugerida de implementação. A ordem privilegia o que reduz trabalho ma
 
 Valor, periodicidade (semanal, quinzenal, mensal) e dia. O sistema credita sozinho e registra que o lançamento foi automático. Implementação com Vercel Cron ou `pg_cron`. **É o recurso de maior impacto fora do MVP**, porque elimina a tarefa repetitiva que faz o pai parar de usar o aplicativo.
 
-### 2.2 Pedido de gasto
+### 2.2 Pedido de gasto e proposta de meta
 
-A criança pede uma baixa ("quero comprar figurinha, R$ 12"). O pai aprova ou recusa no aplicativo. A aprovação gera a transação. Tira o pai do papel de digitador e dá iniciativa à criança. Requer que o token de link possa ter escopo de escrita limitada, já previsto em `access_tokens.can_request`.
+A criança pede uma baixa ("quero comprar figurinha, R$ 12") e propõe metas ("quero juntar pra bicicleta, R$ 400"). O pai aprova ou recusa no aplicativo; a aprovação gera a transação ou a meta. Tira o pai do papel de digitador e dá iniciativa à criança. Requer que o token de link possa ter escopo de escrita limitada, já previsto em `access_tokens.can_request`, o que enfraquece a garantia de somente leitura do link — por isso ficou fora do MVP.
 
 ### 2.3 Tarefas com valor
 
