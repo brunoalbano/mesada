@@ -643,7 +643,15 @@ Cada ambiente tem o seu conjunto completo. `TOKEN_PEPPER` **precisa ser diferent
 
 ### 9.2 Migrations
 
-SQL versionado em `supabase/migrations/`, aplicado por `supabase db push` no GitHub Actions ao mergear na branch principal. Toda migration é idempotente e revisada à mão. Nenhuma alteração de schema pelo painel do Supabase.
+SQL versionado em `supabase/migrations/`, aplicado por `scripts/db-migrate.sh` no GitHub Actions. Nenhuma alteração de schema pelo painel do Supabase: o que não está no repositório não existe.
+
+O migrador é **incremental**, com livro-caixa em `app.schema_migrations`. Três garantias que a versão anterior deste documento não tinha:
+
+- Cada migration roda dentro de **uma** transação, com o registro no mesmo commit. Não existe estado "aplicou metade e anotou".
+- **Soma de verificação** por arquivo. Se um arquivo já aplicado for alterado depois, o migrador para em vez de fingir que o banco está em dia — o banco não tem aquele conteúdo, e reaplicar não o traria. A saída é escrever uma migration nova.
+- **Advisory lock**, então dois deploys simultâneos não se atropelam.
+
+Conexão pelo **session pooler, porta 5432**. O pooler de transação (6543) não serve: não mantém estado de sessão, e as migrations dependem de advisory lock e de objetos criados em sequência na mesma conexão. O script recusa a 6543 em vez de falhar no meio.
 
 ### 9.3 Backup
 
@@ -659,17 +667,25 @@ Dois ambientes, cada um com o próprio projeto Supabase e o próprio banco. Nenh
 | Deploy Vercel | Preview, toda branch e todo pull request | Production, branch `main` |
 | Dados | fictícios, criados por seed | reais |
 | `TOKEN_PEPPER` | valor próprio | valor próprio, diferente |
-| Migrations | aplicadas ao abrir o pull request | aplicadas ao mergear em `main` |
+| Migrations | ao mergear em `main` | ao publicar uma tag `v*` |
+| Deploy | preview automático da Vercel | por tag `v*`, no mesmo workflow |
 
 O ambiente de desenvolvimento existe para que uma migration seja executada contra um banco real antes de tocar dados de família. Uma migration que só rodou em Postgres local não foi validada contra o Supabase: extensões, roles e o hook de auth são diferentes.
 
 **Fluxo de uma mudança de schema:**
 
 1. Escrever a migration e rodar `scripts/db-test.sh` localmente. É o laço rápido, em segundos.
-2. Abrir pull request. O CI roda a suíte e aplica a migration em `mesada-dev`. O preview da Vercel aponta para lá.
-3. Mergear em `main`. O CI aplica a migration em `mesada-prod` e a Vercel publica.
+2. Abrir pull request. A CI roda a suíte inteira. O preview da Vercel aponta para `mesada-dev`.
+3. Mergear em `main`. O workflow aplica a migration em `mesada-dev`.
+4. Publicar uma tag `v*`. O workflow roda a suíte de novo, aplica a migration em `mesada-prod` e só então publica a aplicação.
 
-O passo 3 nunca roda antes do 2 ter passado. Uma migration destrutiva exige aprovação manual no workflow, porque produção não tem PITR (seção 9.3) e o dump semanal pode ter até sete dias.
+**Produção sai por tag, nunca por merge.** Mergear não publica nada: a decisão de publicar vira um ato separado e datado, e a tag é o que se aponta para dizer o que está no ar.
+
+**A migration vai antes do deploy da aplicação**, dentro do mesmo workflow. O código novo pode depender de coluna nova; a ordem inversa derruba a aplicação no intervalo entre os dois passos.
+
+O Environment `producao` no GitHub tem *required reviewers*, então a tag pausa e espera aprovação humana antes de tocar o banco de produção. Isso não é cerimônia: produção não tem PITR no plano gratuito (seção 9.3), e o dump semanal pode estar sete dias atrás.
+
+**Consequência para a Vercel:** desligue o deploy automático de produção pela integração de Git, senão um merge em `main` publicaria por fora do fluxo por tag. Em Settings → Git, aponte a Production Branch para uma branch que não existe, ou use o Ignored Build Step. Preview por branch continua ligado.
 
 **Terceiro ambiente**, se algum dia for preciso: Supabase local por Docker (`supabase start`). Não consome a cota gratuita, e é o mesmo caminho de quem for contribuir com o projeto sem acesso aos projetos gerenciados.
 

@@ -1,0 +1,116 @@
+name: Deploy
+
+# Desenvolvimento acompanha a branch principal; produção sai por tag.
+#
+#   push em main   -> migrations no projeto de desenvolvimento
+#   tag v*         -> migrations em produção, depois deploy da aplicação
+#
+# A ordem importa: a migration vai antes do deploy, porque o código novo pode
+# depender de coluna nova. O inverso derruba a aplicação entre os dois passos.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+concurrency:
+  # Um deploy por alvo de cada vez. O advisory lock no banco é a segunda
+  # barreira; esta evita até o trabalho perdido.
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  testes:
+    name: Testes
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ['5432:5432']
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: scripts/db-test.sh mesada_ci
+
+  desenvolvimento:
+    name: Migrations em desenvolvimento
+    needs: testes
+    if: startsWith(github.ref, 'refs/heads/')
+    runs-on: ubuntu-latest
+    environment: desenvolvimento
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: scripts/db-migrate.sh --aplicar
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+  producao:
+    name: Migrations em produção
+    needs: testes
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # Configure "Required reviewers" neste Environment no GitHub: produção não
+    # tem PITR no plano gratuito, e o dump semanal pode estar sete dias atrás.
+    environment: producao
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: O que será aplicado
+        run: scripts/db-migrate.sh
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+      - run: scripts/db-migrate.sh --aplicar
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+  aplicacao:
+    name: Publicar aplicação
+    needs: producao
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: producao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - name: Falta configurar a Vercel
+        if: ${{ secrets.VERCEL_TOKEN == '' }}
+        run: |
+          echo "VERCEL_TOKEN não está definido neste Environment."
+          echo "As migrations de produção já foram aplicadas; só a publicação"
+          echo "da aplicação ficou de fora."
+          exit 1
+      - run: npm ci
+      - run: npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - run: npx vercel build --prod --token=$VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Publicar
+        run: |
+          url=$(npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN)
+          echo "Publicado: $url"
+          echo "- Publicado: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

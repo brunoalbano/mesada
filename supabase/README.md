@@ -29,17 +29,25 @@ Reproduzir os grants do Supabase é essencial: um teste que passa por falta de `
 
 ## Aplicar no Supabase
 
+Normalmente é o GitHub Actions que aplica: push em `main` vai para desenvolvimento, tag `v*` vai para produção. Ver `.github/workflows/deploy.yml`.
+
+À mão, quando precisar:
+
 ```bash
 export DATABASE_URL='postgresql://postgres.<ref>:<senha>@aws-0-<regiao>.pooler.supabase.com:5432/postgres'
-scripts/db-push.sh              # verifica o alvo e lista o que faria
-scripts/db-push.sh --aplicar    # aplica
+scripts/db-migrate.sh              # lista o que falta, sem aplicar
+scripts/db-migrate.sh --aplicar
 ```
+
+O migrador é incremental: registra cada migration em `app.schema_migrations` com a soma de verificação do arquivo, aplica só o que falta, e roda cada uma dentro de uma transação junto com o próprio registro. Rodar de novo é seguro.
+
+Se um arquivo já aplicado for alterado, ele **para**: o banco não tem aquele conteúdo, e reaplicar não o traria. Escreva uma migration nova.
 
 Use o **session pooler, porta 5432**. O pooler de transação (6543) não serve: não mantém estado de sessão, e as migrations dependem de advisory lock e de objetos criados em sequência na mesma conexão. O script recusa a 6543 em vez de falhar no meio.
 
 A senha vai por variável de ambiente, nunca por argumento: argumento aparece no `ps` de qualquer processo da máquina e no histórico do shell.
 
-Alternativa, se preferir a CLI: `supabase link --project-ref <ref>` e depois `supabase db push`. O `supabase/config.toml` que o link cria não é versionado, porque a referência do projeto difere entre desenvolvimento e produção.
+Alternativa, se preferir a CLI: `supabase link --project-ref <ref>` e depois `supabase db push`. O `supabase/config.toml` que o link cria não é versionado, porque a referência do projeto difere entre desenvolvimento e produção. Note que a CLI usa o próprio controle de versões, separado de `app.schema_migrations` — misturar os dois confunde o estado.
 
 Depois, no painel:
 

@@ -1,9 +1,11 @@
 name: CI
 
+# Verificação de toda mudança. O que aplica migration e publica está em
+# deploy.yml, disparado por push em main e por tag.
 on:
-  push:
-    branches: [main]
   pull_request:
+  push:
+    branches-ignore: [main]
 
 jobs:
   segredos:
