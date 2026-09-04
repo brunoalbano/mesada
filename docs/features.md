@@ -104,7 +104,8 @@ Itens sem os quais o MVP não pode ir ao ar:
 
 - Migrations SQL versionadas, com índices, RLS ligada nas nove tabelas, triggers de estorno e de meta, e o Custom Access Token Hook.
 - Backup semanal por GitHub Action, com restauração testada antes do lançamento. O plano gratuito do Supabase não tem backup nem PITR.
-- Faxina agendada de usuários anônimos órfãos, no mesmo workflow que evita a pausa do projeto.
+- Faxina agendada de usuários anônimos órfãos, no mesmo workflow que evita a pausa dos **dois** projetos.
+- Dois ambientes: projeto Supabase de desenvolvimento e de produção, com migrations aplicadas em desenvolvimento antes de produção, e seed de dados fictícios.
 - Página de privacidade, exclusão de conta e transferência de `owner` ao sair da família.
 - Traduções completas em `pt`, `en` e `es`, com build falhando em chave faltante.
 - Testes de fluxo crítico: lançamento, estorno, meta alcançada, reabertura por estorno, isolamento entre famílias, acesso por link expirado, e sessão viva de link revogado.
@@ -200,7 +201,8 @@ Não entram nem no MVP nem no roteiro atual:
 8. Idioma: `next-intl`, três arquivos de mensagem, resolução por `Accept-Language`, manifesto dinâmico.
 9. Camada lúdica: cofrinho ilustrado nos quatro estados, oito avatares, modos, animação.
 10. PWA: manifesto, service worker com `/c/*` na denylist, leitura offline, onboarding de instalação.
-11. Backup, faxina agendada, keep-alive com commit, estado degradado de banco pausado, página de privacidade.
-12. Testes de fluxo crítico e publicação.
+11. Ambientes: projetos Supabase de desenvolvimento e produção, CI de migrations, seed de desenvolvimento.
+12. Backup, faxina agendada, keep-alive com commit nos dois projetos, estado degradado de banco pausado, página de privacidade.
+13. Testes de fluxo crítico e publicação.
 
 Cada etapa é entregável e testável isoladamente. As etapas 0 a 6 já formam um produto usável por uma família.

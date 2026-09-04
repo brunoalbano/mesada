@@ -50,7 +50,8 @@ Princípios que guiam todas as decisões técnicas:
 - **O projeto Supabase Free é pausado após 7 dias sem requisição.** Mitigação: GitHub Action a cada 3 dias. **[R] Atenção:** o GitHub desativa workflows agendados após 60 dias sem commit no repositório. O workflow precisa fazer também um commit de keep-alive, ou o cron precisa ser externo. Sem isso a mitigação se desliga sozinha depois de dois meses quietos.
 - **[R] Banco pausado precisa de estado degradado.** Quando o banco não responde, o aplicativo mostra a tela "o cofrinho está dormindo", com o último dado em cache, e dispara alerta por e-mail para o responsável técnico. Nunca uma tela de erro crua.
 - **Vercel Hobby permite cron diário.** **[R]** O disparo acontece em algum momento *dentro* da hora especificada, não no minuto exato. Isso importa para a mesada recorrente (pós-MVP): a data do crédito é calculada pela aplicação, nunca pelo instante em que o cron acordou.
-- **[R] Supabase Free permite 2 projetos ativos.** Produção e staging consomem a cota inteira. Decisão: um único projeto de produção; preview deploys apontam para um banco local em Docker ou para o mesmo projeto com dados de teste isolados por família.
+- **[R] Supabase Free permite 2 projetos ativos**, e o projeto tem exatamente dois ambientes, então a cota é consumida por inteiro. Não sobra espaço para um terceiro projeto gerenciado; qualquer ambiente extra roda em Supabase local por Docker, que não consome cota.
+- **O ambiente de desenvolvimento pausa antes do de produção**, porque recebe menos tráfego. O keep-alive tem de acertar os dois projetos, não só o de produção.
 - **[R] Supabase Free não tem backup nem PITR.** Ver seção 10.
 - **Push em iOS** só funciona depois de adicionar à tela de início. **[R]** Instalações na União Europeia perderam PWA em modo standalone e push por causa do DMA; considerar ao avaliar alcance.
 
@@ -618,6 +619,7 @@ Fechadas em 2026-09-04.
 6. **Moeda:** somente BRL no MVP. Coluna de moeda em `families`, `transactions` e `goals`, congelada no lançamento.
 7. **Idioma:** português, inglês e espanhol, por `Accept-Language`, trocável à mão. Sem prefixo na URL. Idioma e moeda independentes.
 8. **Domínio:** `mesada.vercel.app` no início.
+9. **Ambientes:** dois projetos Supabase, desenvolvimento e produção, consumindo a cota gratuita inteira. Migration passa por desenvolvimento antes de produção, sempre. Ver seção 9.4.
 
 ---
 
@@ -635,6 +637,8 @@ Nenhuma dessas coisas estava documentada, e todas travam o primeiro deploy.
 | `TOKEN_PEPPER` | **somente servidor** | HMAC dos tokens de link e de convite |
 | `SUPABASE_DB_URL` | CI | migrations e dump de backup |
 
+Cada ambiente tem o seu conjunto completo. `TOKEN_PEPPER` **precisa ser diferente** entre desenvolvimento e produção: com o mesmo valor, um token gerado em desenvolvimento vale no banco de produção.
+
 `SUPABASE_SERVICE_ROLE_KEY` e `TOKEN_PEPPER` nunca aparecem em variável `NEXT_PUBLIC_*`, nunca chegam ao cliente e nunca entram no repositório.
 
 ### 9.2 Migrations
@@ -647,7 +651,29 @@ Supabase Free **não tem backup nem PITR**. Como o produto promete histórico im
 
 ### 9.4 Ambientes
 
-Um projeto Supabase de produção. Desenvolvimento e preview usam Supabase local em Docker. A cota gratuita de dois projetos ativos não é gasta com staging.
+Dois ambientes, cada um com o próprio projeto Supabase e o próprio banco. Nenhum dado de produção em desenvolvimento.
+
+| | Desenvolvimento | Produção |
+|---|---|---|
+| Projeto Supabase | `mesada-dev` | `mesada-prod` |
+| Deploy Vercel | Preview, toda branch e todo pull request | Production, branch `main` |
+| Dados | fictícios, criados por seed | reais |
+| `TOKEN_PEPPER` | valor próprio | valor próprio, diferente |
+| Migrations | aplicadas ao abrir o pull request | aplicadas ao mergear em `main` |
+
+O ambiente de desenvolvimento existe para que uma migration seja executada contra um banco real antes de tocar dados de família. Uma migration que só rodou em Postgres local não foi validada contra o Supabase: extensões, roles e o hook de auth são diferentes.
+
+**Fluxo de uma mudança de schema:**
+
+1. Escrever a migration e rodar `scripts/db-test.sh` localmente. É o laço rápido, em segundos.
+2. Abrir pull request. O CI roda a suíte e aplica a migration em `mesada-dev`. O preview da Vercel aponta para lá.
+3. Mergear em `main`. O CI aplica a migration em `mesada-prod` e a Vercel publica.
+
+O passo 3 nunca roda antes do 2 ter passado. Uma migration destrutiva exige aprovação manual no workflow, porque produção não tem PITR (seção 9.3) e o dump semanal pode ter até sete dias.
+
+**Terceiro ambiente**, se algum dia for preciso: Supabase local por Docker (`supabase start`). Não consome a cota gratuita, e é o mesmo caminho de quem for contribuir com o projeto sem acesso aos projetos gerenciados.
+
+**Seed de desenvolvimento**: `supabase/seed.sql` cria duas famílias, três crianças, lançamentos e uma meta, para que o ambiente de desenvolvimento tenha o que mostrar sem digitação manual. Nunca é aplicado em produção.
 
 ---
 
