@@ -46,6 +46,21 @@ scripts/db-test.sh          # recria um banco descartável, aplica tudo e testa
 
 O script precisa de um Postgres local. `supabase/tests/00_local_shim.sql` reproduz o mínimo do ambiente Supabase (schema `auth`, `auth.uid()`, roles e privilégios padrão) e **não** é aplicado em produção.
 
+## Segredos
+
+Nenhuma chave entra no repositório. `.env.local` fica só na máquina de quem desenvolve, e em produção os valores vivem nas variáveis de ambiente da Vercel, separados por ambiente.
+
+`scripts/check-secrets.sh` recusa JWT, chave de API do Supabase, chave privada, arquivo `.env` e variável de segredo preenchida. Roda de duas formas:
+
+```bash
+git config core.hooksPath .githooks   # uma vez por clone: ativa o pre-commit
+scripts/check-secrets.sh tudo         # varre o que já está versionado
+```
+
+O gancho de pre-commit está versionado em `.githooks/`, mas o Git não o ativa sozinho num clone novo — daí o `git config` acima. A CI roda a varredura em todo push e pull request, então um clone sem o gancho ainda é pego.
+
+`TOKEN_PEPPER` precisa ser **diferente** entre desenvolvimento e produção: com o mesmo valor, um token gerado em desenvolvimento vale no banco de produção.
+
 ## Licença
 
 MIT. Ver [LICENSE](LICENSE).
