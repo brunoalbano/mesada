@@ -138,44 +138,36 @@ goals (
   emoji         text not null default '🎯',
   target_cents  bigint not null check (target_cents > 0),
   status        text not null default 'active'
-                check (status in ('active', 'reached', 'achieved', 'cancelled')),
-  deadline      date,
-  created_by    uuid not null references auth.users(id),
-  created_at    timestamptz not null default now(),
-  completed_at  timestamptz
-)
-
-goal_movements (
-  id            uuid primary key,
-  goal_id       uuid not null references goals(id) on delete cascade,
-  child_id      uuid not null references children(id) on delete cascade,
-  amount_cents  bigint not null check (amount_cents <> 0), -- positivo reserva, negativo devolve
+                check (status in ('active', 'reached', 'cancelled')),
+  reached_at    timestamptz,               -- congela a meta; nada é recalculado depois
   created_by    uuid not null references auth.users(id),
   created_at    timestamptz not null default now()
 )
+
+-- No máximo uma meta ativa por criança.
+create unique index one_active_goal_per_child
+  on goals (child_id) where status = 'active';
 ```
 
 ### 3.2 Regras do razão (ledger)
 
 - `transactions` é **append-only**. Não existe `UPDATE` nem `DELETE` nessa tabela; a permissão é negada por política do banco.
 - Uma correção é feita por **estorno**: uma nova linha de valor oposto, com `reverses_id` apontando para a original. As duas linhas aparecem no histórico, a original marcada como estornada.
-- `saldo_total = SUM(transactions.amount_cents)` para a criança.
-- `reservado = SUM(goal_movements.amount_cents)` das metas com status `active`.
-- `saldo_livre = saldo_total - reservado`. É esse valor que a criança pode gastar.
+- `saldo = SUM(transactions.amount_cents)` para a criança. É o único saldo que existe: não há saldo livre nem valor bloqueado.
 - Nenhum saldo é armazenado em coluna. Se a soma virar gargalo (improvável antes de dezenas de milhares de linhas por criança), o próximo passo é uma view materializada, não uma coluna mutável.
 
 ### 3.3 Modelo de metas de poupança
 
-Adotamos o **modelo de reserva**, não o de barra de progresso simples.
+A meta é deliberadamente simples: **uma única meta ativa por criança, com um valor-alvo que o saldo total precisa alcançar.**
 
-- Reservar dinheiro para uma meta é `goal_movements` com valor positivo. O dinheiro continua sendo da criança e continua no saldo total, mas sai do saldo livre.
-- Desistir da meta ou liberar parte dela é `goal_movements` com valor negativo.
-- Comprar o objetivo são dois passos, nessa ordem: liberar a reserva (`goal_movements` negativo do total reservado) e lançar a saída (`transactions` negativa, com o motivo). A meta passa a `achieved`.
-- A meta passa sozinha a `reached` quando o reservado atinge `target_cents`. Isso é o gatilho visual da comemoração.
+- A criança tem no máximo uma meta ativa. A restrição é garantida pelo índice único parcial acima, não só pela aplicação.
+- O progresso é calculado, nunca armazenado: `progresso = saldo / target_cents`, limitado a 100%.
+- Não existe reserva, alocação nem saldo bloqueado. O dinheiro da meta é o próprio saldo da criança, e ela continua livre para gastar.
+- Quando o saldo alcança `target_cents`, a meta passa a `reached`, `reached_at` é preenchido e **o cálculo para ali**. Depois disso a meta é um registro histórico: se o saldo cair, a meta continua alcançada e o progresso continua exibido como 100%. Uma meta alcançada nunca volta a ser ativa.
+- Alcançar a meta não movimenta dinheiro. A compra do objetivo é um débito comum no razão, como qualquer outro.
+- Para começar uma meta nova, a criança ou o pai cria outra. A anterior fica no histórico com `reached` ou `cancelled`.
 
-Motivo da escolha: com mais de uma meta ativa, uma barra de progresso comparada ao saldo total mente para a criança — o mesmo dinheiro apareceria como progresso de duas metas ao mesmo tempo. A reserva ensina o conceito correto e é a base do "cofrinho" pós-MVP.
-
-Restrição a garantir na aplicação e em constraint: `reservado` nunca pode passar de `saldo_total`, e nenhuma reserva pode deixar o saldo livre negativo.
+Motivo da escolha: com uma única meta, o saldo total é uma resposta honesta para "quanto falta", e a criança de 4 anos entende a pergunta "quanto falta pra bicicleta" olhando um número só. Um modelo de reserva com várias metas simultâneas foi considerado e recusado por ser complexo demais para o público e para o MVP.
 
 ---
 
@@ -314,10 +306,10 @@ O público vai de 4 a 16 anos. Um único visual não atende as duas pontas: o qu
 | Leitura exigida | Mínima. Ícone e número grandes | Normal |
 | Saldo | Número enorme, moedas ilustradas | Número grande, tipografia limpa |
 | Histórico | Lista de ícones com valor colorido | Lista com data, motivo e autor |
-| Metas | Cofrinho que enche, mascote comemora | Barra de progresso, valor que falta, previsão |
+| Meta | Cofrinho que enche, mascote comemora | Barra de progresso e valor que falta |
 | Animação | Generosa: moeda cai, confete, mascote pula | Discreta: transição e confete na conquista |
 | Som | Opcional, desligado por padrão | Desligado |
-| Vocabulário | "Você ganhou", "Você gastou", "Falta pouco" | "Crédito", "Meta", "Reservado" |
+| Vocabulário | "Você ganhou", "Você gastou", "Falta pouco" | "Crédito", "Débito", "Meta" |
 
 O modo é escolhido pela data de nascimento e pode ser sobrescrito pelo pai em `children.ui_mode`. A criança de 12 anos que gosta do modo pequeno não é impedida.
 
@@ -354,8 +346,8 @@ O modo é escolhido pela data de nascimento e pode ser sobrescrito pelo pai em `
 ## 8. Decisões pendentes de aprovação
 
 1. **Nome e mascote.** Proposta: aplicativo "Mesada", mascote "Poupi", o porquinho. Confirmar ou escolher outro.
-2. **Modelo de metas.** Proposta: reserva com `goal_movements`, conforme a seção 3.3. A alternativa mais simples é a barra de progresso contra o saldo total, que falha com mais de uma meta ativa.
-3. **Reserva feita por quem.** Proposta: o pai reserva sempre; a criança reserva apenas se o pai ligar a permissão por criança.
+2. **Quem cria a meta.** Proposta: o pai cria e edita; a criança apenas acompanha. Alternativa: a criança propõe e o pai aprova.
+3. **Meta alcançada com saldo em queda.** Proposta: a meta continua `reached` para sempre, conforme a seção 3.3. Alternativa: reabrir a meta quando o saldo cai abaixo do alvo, o que consideramos frustrante para a criança.
 4. **Validade padrão do link da criança.** Proposta: 180 dias, renovável em um toque.
 5. **Moeda.** Proposta: somente BRL no MVP, com a coluna de moeda já prevista para depois.
 6. **Domínio.** `mesada.vercel.app` no início, ou domínio próprio desde já.

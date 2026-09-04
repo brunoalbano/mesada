@@ -43,20 +43,23 @@ Um critério auxiliar: se o recurso pode ser adicionado depois sem migração de
 
 ### 1.4 Saldo e histórico
 
-- Saldo total, valor reservado em metas e saldo livre, para cada criança.
+- Saldo de cada criança, em um número só. Não existe saldo bloqueado nem valor reservado.
 - Histórico em ordem cronológica inversa, com data, motivo, ícone, valor e **qual responsável lançou**. A autoria importa quando dois pais usam o mesmo aplicativo.
 - Lançamento estornado aparece marcado.
 - Filtro por período.
 
-### 1.5 Metas de poupança
+### 1.5 Meta de poupança
 
-- Criar meta com título, ícone e valor-alvo. Prazo opcional.
-- Reservar dinheiro do saldo livre para a meta, e devolver a reserva.
-- Progresso visível: quanto já tem, quanto falta.
-- Meta atinge o alvo: comemoração com o mascote e confete, e a meta passa a "alcançada".
-- Concluir a meta: libera a reserva e registra a saída correspondente, em um fluxo único.
-- Cancelar a meta devolve tudo ao saldo livre.
-- Mais de uma meta ativa por criança. Por isso o modelo é de reserva, e não de barra de progresso sobre o saldo total (ver `docs/architecture.md`, seção 3.3).
+Uma meta por criança de cada vez, deliberadamente simples.
+
+- Criar meta com título, ícone e valor-alvo. O alvo é o valor que o **saldo total** precisa alcançar.
+- No máximo uma meta ativa por criança, garantido por índice único no banco.
+- Progresso calculado do saldo atual contra o alvo: quanto já tem e quanto falta.
+- Sem reserva, sem alocação, sem saldo bloqueado. O dinheiro da meta é o próprio saldo, e a criança continua livre para gastar.
+- Saldo alcança o alvo: comemoração com o mascote e confete, a meta passa a "alcançada" e **o cálculo para**. Se o saldo cair depois, a meta continua alcançada e o progresso continua em 100%. Meta alcançada nunca reabre.
+- Alcançar a meta não movimenta dinheiro. Comprar o objetivo é um débito comum no histórico.
+- Cancelar a meta a qualquer momento. Depois de alcançada ou cancelada, criar outra.
+- Metas antigas ficam no histórico da criança.
 
 ### 1.6 Acesso da criança
 
@@ -90,7 +93,7 @@ A criança vê: saldo, histórico e metas. A criança nunca cria nem altera lan�
 Itens sem os quais o MVP não pode ir ao ar:
 
 - Migrations SQL versionadas, com as policies RLS incluídas.
-- Testes de fluxo crítico: lançamento, estorno, reserva de meta, isolamento entre famílias, acesso por link expirado e revogado.
+- Testes de fluxo crítico: lançamento, estorno, meta alcançada, isolamento entre famílias, acesso por link expirado e revogado.
 - GitHub Action que evita a pausa do projeto Supabase por inatividade.
 - Página de privacidade explicando o tratamento mínimo de dados de menores.
 
@@ -116,39 +119,43 @@ Lista de tarefas, cada uma com valor e periodicidade. O pai marca como feita e o
 
 "Sua mesada caiu", "meta alcançada", "novo pedido esperando". Depende da instalação do PWA em iOS.
 
-### 2.5 Cofrinho com rendimento
+### 2.5 Várias metas ao mesmo tempo, com reserva
 
-Saldo de poupança separado, que rende um percentual definido pelo pai. Ensina juros compostos de forma concreta. Reaproveita `goal_movements` e o extrato de rendimento vira transação com origem automática.
+Mais de uma meta ativa por criança exige separar o dinheiro por meta, senão o mesmo saldo aparece como progresso de duas metas ao mesmo tempo e mente para a criança. Introduz reserva de valor e o conceito de saldo livre. Só vale a pena se o uso mostrar que uma meta por vez limita as famílias.
 
-### 2.6 Exportar histórico
+### 2.6 Cofrinho com rendimento
+
+Saldo de poupança separado, que rende um percentual definido pelo pai. Ensina juros compostos de forma concreta. Depende da reserva de valor do item anterior.
+
+### 2.7 Exportar histórico
 
 CSV e um resumo mensal em PDF por criança.
 
-### 2.7 Relatórios e gráficos
+### 2.8 Relatórios e gráficos
 
 Quanto entrou e saiu por mês, categorias de gasto, evolução do saldo. Modo Grande apenas.
 
-### 2.8 Categorias de gasto
+### 2.9 Categorias de gasto
 
 Categoria em cada lançamento, com ícone. Alimenta os relatórios.
 
-### 2.9 Gamificação
+### 2.10 Gamificação
 
 Sequências de poupança, conquistas, medalhas por meta concluída. Alto risco de virar enfeite; só depois que o uso diário estiver estável.
 
-### 2.10 Multi-moeda
+### 2.11 Multi-moeda
 
 Coluna de moeda por família. Já previsto no modelo de dados para não exigir migração destrutiva.
 
-### 2.11 Fila offline de escrita
+### 2.12 Fila offline de escrita
 
 Lançar sem rede e sincronizar depois. Exige resolução de conflito e identificador idempotente por lançamento.
 
-### 2.12 Foto de recibo
+### 2.13 Foto de recibo
 
 Anexo de imagem no lançamento, com Supabase Storage. Cuidado adicional de privacidade e consumo do plano gratuito.
 
-### 2.13 Transferência entre irmãos
+### 2.14 Transferência entre irmãos
 
 Uma criança empresta ou dá para a outra, com aprovação do pai.
 
@@ -171,7 +178,7 @@ Não entram nem no MVP nem no roteiro atual:
 2. Autenticação do responsável, família e convite de responsável.
 3. Cadastro de criança.
 4. Lançamento, estorno, saldo e histórico.
-5. Metas de poupança.
+5. Meta de poupança.
 6. Link da criança e a tela da criança.
 7. Conta Google da criança, opcional.
 8. Camada lúdica: mascote, modos, animação, avatares.
