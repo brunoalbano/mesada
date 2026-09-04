@@ -32,7 +32,7 @@ Princípios que guiam todas as decisões técnicas:
 | Framework | Next.js 15 (App Router, TypeScript, React Server Components) | Um único projeto para interface e API. TypeScript é a stack do time. |
 | Hospedagem | Vercel, plano Hobby | Grátis, deploy por push, HTTPS e domínio incluídos, cron incluído. |
 | Banco de dados | Supabase Postgres, plano Free | Postgres gerenciado com Row Level Security. 500 MB, muito acima da necessidade. |
-| Autenticação | Supabase Auth | Google OAuth, magic link e sessão anônima. Integra com RLS pelo JWT. |
+| Autenticação | Supabase Auth | Google OAuth e magic link. Integra com RLS pelo JWT. |
 | Estilo | Tailwind CSS + shadcn/ui | Rápido, mobile first por padrão, componentes acessíveis. |
 | Animação | Motion | Micro-interações com respeito a `prefers-reduced-motion`. |
 | PWA | Serwist | Service worker, manifest, instalação e leitura offline. |
@@ -50,7 +50,7 @@ Princípios que guiam todas as decisões técnicas:
 - **O projeto Supabase Free é pausado após 7 dias sem requisição.** Mitigação: GitHub Action a cada 3 dias. **[R] Atenção:** o GitHub desativa workflows agendados após 60 dias sem commit no repositório. O workflow precisa fazer também um commit de keep-alive, ou o cron precisa ser externo. Sem isso a mitigação se desliga sozinha depois de dois meses quietos.
 - **[R] Banco pausado precisa de estado degradado.** Quando o banco não responde, o aplicativo mostra a tela "o cofrinho está dormindo", com o último dado em cache, e dispara alerta por e-mail para o responsável técnico. Nunca uma tela de erro crua.
 - **Vercel Hobby permite cron diário.** **[R]** O disparo acontece em algum momento *dentro* da hora especificada, não no minuto exato. Isso importa para a mesada recorrente (pós-MVP): a data do crédito é calculada pela aplicação, nunca pelo instante em que o cron acordou.
-- **[R] Supabase Free permite 2 projetos ativos**, e o projeto tem exatamente dois ambientes, então a cota é consumida por inteiro. Não sobra espaço para um terceiro projeto gerenciado; qualquer ambiente extra roda em Supabase local por Docker, que não consome cota.
+- **Supabase Free permite 2 projetos ativos**, e o projeto tem exatamente dois ambientes, então a cota é consumida por inteiro. Não sobra espaço para um terceiro projeto gerenciado; qualquer ambiente extra roda em Supabase local por Docker, que não consome cota.
 - **O ambiente de desenvolvimento pausa antes do de produção**, porque recebe menos tráfego. O keep-alive tem de acertar os dois projetos, não só o de produção.
 - **[R] Supabase Free não tem backup nem PITR.** Ver seção 10.
 - **Push em iOS** só funciona depois de adicionar à tela de início. **[R]** Instalações na União Europeia perderam PWA em modo standalone e push por causa do DMA; considerar ao avaliar alcance.
@@ -107,32 +107,15 @@ children (
   created_at    timestamptz not null default now()
 )
 
--- [R] access_token_id liga a identidade ao link que a criou. Sem isso, revogar
--- o link não derruba a sessão que ele gerou. Ver seção 4.5.
+-- Contas ligadas a um perfil de criança. revoked_at é o que corta o acesso:
+-- o hook para de emitir a claim no refresh seguinte.
 child_identities (
-  child_id        uuid not null references children(id) on delete cascade,
-  auth_user_id    uuid not null references auth.users(id) on delete cascade unique,
-  provider        text not null check (provider in ('google', 'email', 'link')),
-  access_token_id uuid references access_tokens(id) on delete cascade,
-  revoked_at      timestamptz,
-  linked_at       timestamptz not null default now(),
-  primary key (child_id, auth_user_id),
-  constraint link_identity_has_token
-    check ((provider = 'link') = (access_token_id is not null))
-)
-
-access_tokens (
-  id            uuid primary key default gen_random_uuid(),
   child_id      uuid not null references children(id) on delete cascade,
-  token_hash    bytea not null unique,     -- [R] HMAC-SHA256(token, PEPPER), ver 4.5
-  label         text,
-  can_request   boolean not null default false,   -- dormente até o pós-MVP
-  expires_at    timestamptz not null,             -- padrão de 365 dias
+  auth_user_id  uuid not null references auth.users(id) on delete cascade unique,
+  provider      text not null check (provider in ('google', 'email')),
   revoked_at    timestamptz,
-  last_used_at  timestamptz,
-  failed_count  int not null default 0,           -- [R] limite de taxa, ver 4.5
-  created_by    uuid references auth.users(id) on delete set null,
-  created_at    timestamptz not null default now()
+  linked_at     timestamptz not null default now(),
+  primary key (child_id, auth_user_id)
 )
 
 invites (
@@ -141,9 +124,9 @@ invites (
   kind          text not null check (kind in ('parent', 'child')),
   child_id      uuid references children(id) on delete cascade,
   email         text,
-  token_hash    bytea not null unique,     -- [R] mesmo tratamento de access_tokens
+  token_hash    bytea not null unique,     -- HMAC-SHA256(token, PEPPER), ver 4.5
   role          text check (role in ('owner', 'parent')),
-  expires_at    timestamptz not null,      -- [R] 7 dias para convite de pai, não 365
+  expires_at    timestamptz not null,      -- 7 dias
   accepted_at   timestamptz,
   accepted_by   uuid references auth.users(id) on delete set null,
   revoked_at    timestamptz,               -- [R]
@@ -214,8 +197,8 @@ create index on transactions (child_id, created_at desc, id desc);
 -- coluna líder errada para o lookup por usuário
 create index on family_members (user_id);
 create index on children (family_id);
+create index on child_identities (child_id);
 create index on goals (child_id, created_at desc);
-create index on access_tokens (child_id);
 create index on invites (family_id);
 create index on invites (child_id);
 -- convite de pai pendente, um por endereço
@@ -328,40 +311,29 @@ Três detalhes que não são opcionais:
 | Papel | Como entra | O que faz |
 |---|---|---|
 | Pai/responsável | Google OAuth ou magic link | Cria família, convida responsável, cria criança, lança crédito e débito, estorna, cria meta, gera e revoga link da criança |
-| Criança com conta | Google OAuth ou magic link | Vê saldo, histórico e meta. **Somente leitura no MVP** |
-| Criança por link | URL com token, sem senha | Vê saldo, histórico e meta. **Somente leitura no MVP** |
+| Criança | Google OAuth ou magic link | Vê saldo, histórico e meta. **Somente leitura no MVP** |
 
-**[R]** A linha da criança com conta dizia "reserva para meta se o pai permitir", resto de um modelo removido. A criança não escreve nada no MVP, por nenhum dos dois caminhos.
+A criança não escreve nada no MVP.
 
 Um pai pode pertencer a várias famílias. Uma família não enxerga nada de outra.
 
-### 4.2 A criança é um perfil, não um usuário
+### 4.2 A criança é um perfil, com conta própria
 
-`children` é o perfil. As formas de acesso ficam em `child_identities` (contas) e `access_tokens` (links). Uma criança pode ter zero contas, uma conta Google e vários links ao mesmo tempo.
+`children` é o perfil, e `child_identities` liga contas a ele. Uma criança pode ter mais de uma conta (Google e magic link), e o responsável desvincula qualquer uma a qualquer momento.
 
-**Conta Google exige 13 anos no Brasil**, e contas supervisionadas por Family Link podem ter o OAuth de terceiros bloqueado pelo controle parental. Consequência: **o link é o caminho principal e a conta é opcional.** O aplicativo nunca exige conta para a criança ver o saldo.
+**A conta é obrigatória.** Não existe acesso sem login.
 
-### 4.3 Normalização das sessões
+**Consequência aceita, e o custo é real:** conta Google exige 13 anos no Brasil, e conta supervisionada por Family Link pode ter o OAuth de terceiros bloqueado pelo controle parental. Criança abaixo dessa idade não tem acesso próprio ao aplicativo; o responsável mostra o saldo pelo próprio celular. O Modo Pequeno (seção 6.1) continua existindo para quando a criança olha junto com o pai, e para a criança de 13 ou 14 anos que prefere a interface mais simples.
 
-Todo acesso vira uma sessão Supabase, para que a autorização fique inteiramente em RLS.
+Isso foi decidido depois de considerar a alternativa: um link com token na URL que dispensava conta. Ver decisão 10 na seção 8 para o que se ganhou e o que se perdeu.
 
-- **Conta (Google ou magic link):** fluxo padrão. Existe `auth.uid()`.
-- **Link:** rota de servidor valida o token e cria uma **sessão anônima**.
+### 4.3 Sessões
 
-**[R] A ordem importa e precisa estar escrita.** O Custom Access Token Hook roda na criação do token; a linha em `child_identities` só pode existir depois que o usuário anônimo existe. Se a sessão for entregue direto do `signInAnonymously()`, o JWT sai **sem** a claim e toda policy nega a primeira requisição. A ordem correta é:
+Todo acesso é uma sessão normal do Supabase Auth, criada por Google OAuth ou por magic link. Não há sign-in anônimo, não há troca de token, não há rota com `service_role`.
 
-1. `signInAnonymously()`
-2. inserir `child_identities` com `service_role`
-3. `refreshSession()` — é este token que carrega `child_id`
-4. só então gravar o cookie
+Um **Custom Access Token Hook** (função Postgres do Supabase Auth) injeta a claim `child_id` quando o usuário autenticado tem identidade de criança viva (`child_identities.revoked_at is null`). As policies leem `auth.jwt() ->> 'child_id'`, então pai e criança são cobertos pelas mesmas policies.
 
-**[R] Reusar a sessão existente.** Se o dispositivo já tem cookie válido para aquele token, a rota não cria usuário anônimo novo. Sem isso, cada abertura de link em cada dispositivo cria uma linha permanente em `auth.users`, que conta como usuário ativo mensal e nunca é limpa pelo Supabase.
-
-**[R] Limite de sign-in anônimo.** O padrão do Supabase é 30 por hora por IP. Como a troca acontece no servidor, todas as famílias compartilham os IPs de saída da Vercel, ou seja, um balde global. Aumentar o limite no painel e reusar sessão, conforme acima.
-
-**[R] Faxina agendada.** O mesmo GitHub Action que evita a pausa apaga usuários anônimos sem uso há mais de 30 dias, junto com suas identidades.
-
-O hook injeta `child_id` e `child_scope` no JWT. **[R] O hook só emite `child_id` quando a identidade está viva:** `child_identities.revoked_at is null` e, para `provider = 'link'`, o `access_tokens` correspondente com `revoked_at is null and expires_at > now()`.
+O hook roda **a cada emissão de token**, inclusive no refresh. É por isso que desvincular uma conta funciona: o hook simplesmente para de emitir a claim, e a sessão perde o acesso no próximo refresh. O TTL do access token (600 a 900 segundos) é o tamanho dessa janela residual.
 
 ### 4.4 Row Level Security
 
@@ -373,16 +345,19 @@ alter table families         enable row level security;
 alter table family_members   enable row level security;
 alter table children         enable row level security;
 alter table child_identities enable row level security;
-alter table access_tokens    enable row level security;
 alter table invites          enable row level security;
 alter table transactions     enable row level security;
 alter table goals            enable row level security;
 
-revoke all on child_identities, access_tokens, invites from anon, authenticated;
+revoke all on child_identities, invites from anon, authenticated;
 revoke update, delete on transactions from anon, authenticated;
 ```
 
-**[R] Sessão anônima tem role `authenticated`.** O Supabase cria linha real em `auth.users`, então o visitante anônimo **não** tem `auth.uid()` nulo — corrigindo o que a versão anterior deste documento afirmava. Como o sign-in anônimo fica habilitado no projeto para o fluxo do link funcionar, qualquer pessoa com a chave anon pública gera uma sessão `authenticated`. **Nenhuma policy pode ser escrita como "está logado".** Toda policy se apoia em pertencimento a família ou na claim `child_id`.
+**Nenhuma policy pode ser escrita como "está logado".** Toda policy se apoia em pertencimento a família ou na claim `child_id`.
+
+A regra continua valendo mesmo sem sign-in anônimo, por dois motivos. Habilitar o sign-in anônimo é uma caixa de seleção no painel, e caixa de seleção volta a ser marcada. E `authenticated` é um role compartilhado por todos os usuários do projeto: uma policy que se contenta com ele deixa qualquer conta ler qualquer família.
+
+Sessão anônima, quando existe, tem role `authenticated` e `auth.uid()` **não** nulo — corrigindo o que a versão 1.0 deste documento afirmava. A suíte continua testando esse caso.
 
 **[R] Helpers `security definer` para evitar recursão.** Subconsulta dentro de policy é avaliada sob a RLS de quem chama. Uma policy em `family_members` que consulta `family_members` produz `infinite recursion detected in policy`, que é a falha mais comum desse desenho no Supabase. Toda policy passa por estes helpers:
 
@@ -410,8 +385,7 @@ Matriz de policies, resumida:
 | `families` | membro | função definer | `owner` | `owner` |
 | `family_members` | membro da mesma família | **nenhuma** (função definer) | `owner` | próprio ou `owner` |
 | `children` | membro, ou a própria criança | pai da família | pai da família | — |
-| `child_identities` | pai da família | **nenhuma** | **nenhuma** | pai da família |
-| `access_tokens` | pai da família | pai da família | pai da família (revogar) | pai da família |
+| `child_identities` | pai da família | **nenhuma** | **nenhuma** | pai da família (desvincular) |
 | `invites` | membro da família | `owner` da família | `owner` (revogar) | `owner` |
 | `transactions` | pai, ou a própria criança | pai, com `created_by = auth.uid()` | **nenhuma** | **nenhuma** |
 | `goals` | pai, ou a própria criança | pai | pai, e o trigger | pai |
@@ -436,53 +410,46 @@ for insert with check (
 -- Nenhuma policy de update ou delete em transactions. Sem policy, negado.
 ```
 
-**[R] `child_identities` sem policy de escrita, nunca.** Ela é a única entrada do hook. Se qualquer sessão comum puder inserir ali, basta gravar `(child_id da vítima, próprio auth_user_id)` e dar refresh para o Supabase assinar um JWT legítimo com o `child_id` alheio. A claim não é forjável por criptografia, mas é *causável*. Escrita só pela rota de troca com `service_role` e por funções `security definer`.
+**[R] `child_identities` sem policy de escrita, nunca.** Ela é a única entrada do hook. Se qualquer sessão comum puder inserir ali, basta gravar `(child_id da vítima, próprio auth_user_id)` e dar refresh para o Supabase assinar um JWT legítimo com o `child_id` alheio. A claim não é forjável por criptografia, mas é *causável*. Escrita só por funções `security definer`, hoje apenas `accept_child_invite`.
 
 **[R] `family_members` sem policy de insert.** A única checagem possível com o cliente do próprio usuário seria `user_id = auth.uid()`, que deixaria qualquer autenticado — inclusive um anônimo — se inserir em qualquer `family_id`. Aceitar convite e criar família passam por função `security definer` que recebe o token cru, valida e insere. Ver seção 5.
 
-### 4.5 Segurança do link de acesso
+### 4.5 Segurança dos convites
 
-Esta seção descreve um risco real. Está em texto direto porque a ordem das mitigações importa.
-
-Um token que trafega na URL vaza com facilidade: histórico do navegador, logs de servidor e proxy, cabeçalho `Referer`, captura de tela compartilhada. Quem obtiver o link vê os dados da criança.
+Sobrou um único tipo de credencial fora do login: o **convite**, que existe em duas formas. O de responsável dá escrita nas finanças da família. O de criança liga uma conta a um perfil de criança. Ambos viajam como token numa URL, e um token na URL vaza com facilidade: histórico do navegador, logs de servidor e proxy, cabeçalho `Referer`, captura de tela compartilhada.
 
 Mitigações cumulativas, todas no MVP:
 
 1. Token de 32 bytes de `crypto.getRandomValues`, em base64url.
-2. **[R]** O banco guarda `HMAC-SHA256(token, PEPPER)`, com o pepper em variável de ambiente e fora do banco. Assim um dump vazado não permite testar tokens. O valor em claro é exibido ao pai uma única vez.
-3. Token em segmento de caminho (`/c/<token>`), nunca em query string.
-4. **[R]** `/c/[token]` é rota de servidor que grava o cookie e responde **303** para `/c/saldo`, com `Cache-Control: no-store`. `history.replaceState` no cliente **não basta**: a navegação já aconteceu, e com o Serwist instalado essa resposta fica no CacheStorage indexada pela URL com o token, num tablet compartilhado. O `/c/*` entra na denylist de navegação do service worker, e o `start_url` do manifesto é fixo em `/c/saldo`, nunca derivado da URL aberta na instalação.
-5. Escopo somente leitura. O token nunca cria, edita ou estorna.
-6. **[R] Revogar precisa matar a sessão viva.** Marcar `revoked_at` não invalida JWT já emitido, e o refresh token do Supabase rotaciona sem prazo fixo — na versão anterior, a sessão se renovava para sempre e a revogação era cosmética. Agora: `child_identities.access_token_id` com cascade, o hook confere validade a cada refresh, revogar apaga as identidades derivadas **e** chama a admin API para destruir os usuários anônimos daquele token. TTL do access token em 10 a 15 minutos, para limitar a janela residual.
+2. O banco guarda `HMAC-SHA256(token, TOKEN_PEPPER)`, com o pepper em variável de ambiente e fora do banco. Um dump vazado não permite testar tokens. O valor em claro é exibido uma única vez, a quem criou o convite.
+3. Token em segmento de caminho, nunca em query string.
+4. A rota de aceite responde **303** com `Cache-Control: no-store`, e o token some da barra de endereços. `history.replaceState` no cliente não basta: a navegação já aconteceu, e com o service worker instalado essa resposta ficaria no CacheStorage indexada pela URL com o token.
+5. Validade curta: 7 dias.
+6. `revoked_at`, e o responsável revoga a qualquer momento.
 7. `Referrer-Policy: no-referrer` no aplicativo inteiro.
-8. **[R] Limite de taxa por IP e teto global**, persistido em Postgres. O limite por token não impede varredura, porque varredura usa um token diferente a cada requisição; e limitador em memória não funciona em serverless, onde cada instância tem a própria memória. O contador por token permanece apenas como sinal de link compartilhado demais.
+8. **Uso único atômico.** O `UPDATE ... RETURNING` só afeta linha ainda não aceita, não revogada e não expirada, então duas redenções concorrentes não podem ambas ter sucesso.
 
-**[R] Vincular conta Google não pode partir de sessão de link.** A regra anterior — "conta Google é vinculada por convite consumido ou por sessão de link válida" — transformava posse do link em criação de uma credencial permanente e independente: quem abrisse um link encaminhado vinculava o próprio Google àquele `child_id`, sem expiração e sem revogação, e continuava dentro mesmo depois de o pai revogar o link. Agora o vínculo exige convite `kind='child'` emitido pelo pai, ou aprovação que o pai confirma na própria sessão. `child_identities.revoked_at` existe, e a tela do pai lista contas vinculadas ao lado dos links.
+**O e-mail vem da sessão, nunca de parâmetro.** No convite de responsável, quem lesse o convite podia satisfazer o próprio vínculo e escalar para `owner`; hoje `token_hash` é ilegível por qualquer sessão de usuário, por grant de coluna, e `invites` só é legível pelo `owner` da família.
 
-A vinculação **nunca** é feita por igualdade de e-mail. `unique (auth_user_id)` impede que a mesma conta Google aponte para duas crianças.
+**Vincular conta exige conta real.** `app.is_real_user()` recusa sessão anônima. O sign-in anônimo está desabilitado no projeto, mas a checagem fica: desabilitar é configuração de painel, e configuração de painel muda.
 
-**[R] Convite de pai recebe o mesmo tratamento.** Ele carrega privilégio *maior* que o link da criança: escrita nas finanças e poder de criar links. Recebe os itens 1 a 4, 7 e 8 acima, mais `revoked_at`, validade de 7 dias, vínculo ao `email` quando presente, e uso único atômico:
+`unique (auth_user_id)` impede que a mesma conta Google aponte para duas crianças. A vinculação **nunca** é feita por igualdade de e-mail.
 
-```sql
-update invites set accepted_at = now(), accepted_by = auth.uid()
- where id = $1 and accepted_at is null and revoked_at is null and expires_at > now();
--- age somente se uma linha foi afetada
-```
+### 4.6 Pai e criança no mesmo dispositivo
 
-### 4.6 Sessões simultâneas
+São duas contas distintas, então a separação é a do próprio navegador: perfis diferentes, ou logout e login. Não há cookie com escopo por caminho, nem duas sessões vivas ao mesmo tempo — o que sumiu junto com o acesso por link.
 
-O pai abre o link da filha para conferir e não pode perder a própria sessão. O cookie da criança usa nome próprio e `Path=/c`; o cookie do responsável fica em `/`. Faixa fixa mostra "Você está vendo como Ana", com botão de sair.
-
-**[R] Cookie com `Path=/c` não é enviado para `/api/*`.** A rota de troca fica em `/c/api/session`, e todo dado da criança vem de RSC e Server Actions sob `/c`. Alargar para `Path=/` reintroduziria exatamente a colisão que esta seção evita. `Path` é conveniência de escopo, não fronteira de confiança: a sessão do responsável continua validada no servidor, nunca inferida pelo cookie que chegou.
+A interface mostra sempre de quem é a sessão, para que ninguém lance mesada achando que está na conta do outro responsável.
 
 ### 4.7 Dados pessoais de menores (LGPD)
 
 - Apelido, não nome completo.
 - Avatar é ilustração de lista fechada. **O MVP não aceita upload de foto.**
 - Data de nascimento opcional.
-- Criança que acessa por link não tem e-mail cadastrado.
 
 **[R] Cascade não alcança o schema `auth`.** Apagar a família apaga o schema `public`, mas a linha em `auth.users` e as de `auth.identities` — que guardam e-mail e `sub` do Google, dado identificável de menor — sobrevivem. A exclusão de família chama a admin API para apagar os usuários associados.
+
+**Com a conta obrigatória, toda criança passa a ter e-mail cadastrado**, o que é mais dado pessoal de menor do que o desenho anterior guardava. A contrapartida é que a autenticação é a do Google, e não uma credencial nossa circulando por URL.
 
 **[R] Exclusão de conta e saída de família precisam existir.** `created_by` agora é anulável com `on delete set null`, e `created_by_name` guarda o snapshot da autoria, então apagar a conta é possível sem quebrar o razão imutável. Sair da família exige transferência de `owner` quando o último `owner` sai; a operação é bloqueada até haver outro.
 
@@ -496,12 +463,11 @@ app/
     familias/
     criancas/[id]/
     convites/
-  c/                        # área da criança, cookie com Path=/c
-    [token]/                # 303 + no-store, troca token por sessão
-    api/session/            # [R] sob /c, senão o cookie não chega
+  c/                        # área da criança, sessão normal com claim child_id
     saldo/
     historico/
     meta/
+  convite/[token]/          # 303 + no-store, aceita convite e limpa a URL
   manifest.webmanifest/     # rota dinâmica, idioma resolvido
 messages/
   pt.json                   # idioma-fonte
@@ -520,7 +486,9 @@ supabase/
 
 Escrita acontece em **Server Actions**, com validação Zod e o cliente Supabase do usuário autenticado.
 
-**[R] Três operações não são expressáveis com o cliente do usuário** e passam por funções Postgres `security definer` com `set search_path = ''`: criar família (insere a própria linha de `family_members`), aceitar convite (insere membro em família da qual ainda não faz parte) e criar convite. Elas são a alternativa sancionada ao `service_role`, que continua restrito à rota de troca de token. Sem nomear essa alternativa, quem implementa recorre ao `service_role` em Server Action e a superfície mínima deixa de existir.
+**Três operações não são expressáveis com o cliente do usuário** e passam por funções Postgres `security definer` com `set search_path = ''`: criar família (insere a própria linha de `family_members`), aceitar convite (insere linha em família ou perfil dos quais ainda não faz parte) e criar convite.
+
+**A aplicação não usa `service_role` em lugar nenhum.** Havia exatamente um uso legítimo — a rota que trocava o token do link por sessão — e ele sumiu junto com o link. Toda escrita passa pela RLS com o cliente do próprio usuário; o que não cabe em policy vira função definer. Se aparecer a tentação de usar `service_role` numa Server Action, a resposta certa é uma função definer nova.
 
 ---
 
@@ -597,9 +565,9 @@ A resolução acontece no servidor, na primeira renderização, para que a pági
 ## 7. PWA
 
 - `manifest.webmanifest` por rota dinâmica, com ícones maskable, `display: standalone` e `theme_color`.
-- **[R] `start_url` fixo**: `/` para o responsável, `/c/saldo` para a criança. Nunca derivado da URL aberta na instalação, senão o token entra no atalho.
+- **`start_url` fixo**: `/` para o responsável, `/c/saldo` para a criança.
 - Service worker com Serwist: casco em cache; saldo, histórico e meta em *stale-while-revalidate*, para a criança abrir offline e ver o último estado, marcado com "atualizado às HH:MM".
-- **[R] `/c/*` na denylist de navegação do service worker**, para o token nunca ser cacheado.
+- **`/convite/*` na denylist de navegação do service worker**, para o token de convite nunca ser cacheado.
 - Escrita é sempre online no MVP.
 - Onboarding ensina "adicionar à tela de início", com instrução por sistema.
 
@@ -613,13 +581,18 @@ Fechadas em 2026-09-04.
 
    O requisito de três idiomas decidiu a escolha. "Mesada" é palavra real em português **e** em espanhol, com o mesmo significado, e é pronunciável em inglês sem armadilha. Duas alternativas foram descartadas por motivo concreto: **Poupi** lê-se "poopy" em inglês, o que é fatal em aplicativo infantil; **Cofrinho** tem o dígrafo "nh", que não existe em inglês nem em espanhol, e trava o falante dos dois. O repositório já se chamava `mesada`.
 2. **Meta de poupança:** uma única meta ativa por criança, alvo sobre o saldo total, sem reserva. Ver 3.3.
-3. **Quem cria a meta:** somente o responsável. A criança acompanha. Mantém o link estritamente somente leitura, que é a mitigação mais forte contra vazamento de token.
+3. **Quem cria a meta:** somente o responsável. A criança acompanha.
 4. **Meta alcançada:** congela em `reached`. Queda posterior de saldo não reabre. **[R] Exceção:** o estorno da própria transação que alcançou a meta reabre, porque senão o único mecanismo de correção do produto não alcança a meta.
-5. **Validade do link:** 365 dias, renovável em um toque, com `last_used_at` e revogação. **[R]** A janela longa só é aceitável porque a revogação passou a matar a sessão viva (4.5 item 6); sem isso, 365 dias significavam acesso permanente.
+5. **Validade do convite:** 7 dias, revogável, de uso único atômico.
 6. **Moeda:** somente BRL no MVP. Coluna de moeda em `families`, `transactions` e `goals`, congelada no lançamento.
 7. **Idioma:** português, inglês e espanhol, por `Accept-Language`, trocável à mão. Sem prefixo na URL. Idioma e moeda independentes.
 8. **Domínio:** `mesada.vercel.app` no início.
 9. **Ambientes:** dois projetos Supabase, desenvolvimento e produção, consumindo a cota gratuita inteira. Migration passa por desenvolvimento antes de produção, sempre. Ver seção 9.4.
+10. **Acesso da criança: somente conta própria.** O link com token na URL saiu do produto, e com ele o sign-in anônimo, a troca de token, o limite de taxa dessa rota e o `service_role` na aplicação.
+
+    O que se ganhou: a superfície de credencial encolheu para um item, o convite; não há mais credencial de longa duração circulando por URL; e a aplicação deixou de ter qualquer chave capaz de ignorar a RLS.
+
+    O que se perdeu, e é o custo alto: **criança abaixo de 13 anos não tem acesso próprio**, porque conta Google exige essa idade no Brasil e Family Link pode bloquear OAuth de terceiros. O Modo Pequeno passa a servir a criança que olha junto com o responsável, e a de 13 ou 14 que prefere a interface simples. Se essa faixa etária voltar a ser prioridade, a alternativa registrada é servir `/c` renderizado no servidor com uma função `security definer` que recebe o hash do token — isso devolveria o link sem trazer de volta o sign-in anônimo.
 
 ---
 
@@ -633,13 +606,12 @@ Nenhuma dessas coisas estava documentada, e todas travam o primeiro deploy.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | cliente e servidor | endpoint do projeto |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | cliente e servidor | chave pública; é pública mesmo, a proteção é a RLS |
-| `SUPABASE_SERVICE_ROLE_KEY` | **somente servidor** | rota de troca de token e faxina agendada |
-| `TOKEN_PEPPER` | **somente servidor** | HMAC dos tokens de link e de convite |
+| `TOKEN_PEPPER` | **somente servidor** | HMAC dos tokens de convite |
 | `SUPABASE_DB_URL` | CI | migrations e dump de backup |
 
 Cada ambiente tem o seu conjunto completo. `TOKEN_PEPPER` **precisa ser diferente** entre desenvolvimento e produção: com o mesmo valor, um token gerado em desenvolvimento vale no banco de produção.
 
-`SUPABASE_SERVICE_ROLE_KEY` e `TOKEN_PEPPER` nunca aparecem em variável `NEXT_PUBLIC_*`, nunca chegam ao cliente e nunca entram no repositório.
+`TOKEN_PEPPER` nunca aparece em variável `NEXT_PUBLIC_*`, nunca chega ao cliente e nunca entra no repositório. A aplicação **não tem** `SUPABASE_SERVICE_ROLE_KEY`: não existe mais caminho que precise dela.
 
 ### 9.2 Migrations
 

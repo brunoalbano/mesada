@@ -63,16 +63,15 @@ Uma meta por criança de cada vez, deliberadamente simples.
 
 ### 1.6 Acesso da criança
 
-Duas formas, ambas no MVP, levando à mesma tela:
+A criança entra com **conta própria**: Google ou magic link. Não existe acesso sem login.
 
-1. **Link próprio da criança.** É o **caminho principal**. Não exige conta, não exige e-mail, não exige senha, e funciona para criança de qualquer idade. O pai gera o link, manda para o dispositivo da criança, e a criança abre. Somente leitura por padrão.
-2. **Conta Google ou magic link.** Opcional, para quem tem 13 anos ou mais e prefere entrar com a própria conta. Nunca é exigida.
+- O responsável emite um convite para a criança, que vincula a conta ao perfil.
+- O convite vale 7 dias, é de uso único e pode ser revogado.
+- O responsável vê as contas vinculadas e desvincula qualquer uma. Desvincular corta o acesso no refresh seguinte.
+- Uma criança pode ter mais de uma conta vinculada; a mesma conta nunca aponta para duas crianças.
+- A criança vê saldo, histórico e meta. **Não cria nem altera lançamento no MVP.**
 
-Ambas resolvem para o mesmo perfil de criança e mostram exatamente os mesmos dados. Uma criança pode ter as duas ao mesmo tempo, ou só o link.
-
-O pai administra os links: cria com rótulo ("tablet da sala"), define validade com padrão de 365 dias, vê quando cada um foi usado pela última vez, revoga e gera outro.
-
-A criança vê: saldo, histórico e metas. A criança nunca cria nem altera lançamento no MVP.
+**Limitação assumida:** conta Google exige 13 anos no Brasil, e conta supervisionada por Family Link pode ter o OAuth de terceiros bloqueado pelo controle parental. Abaixo dessa idade, a criança acompanha pelo celular do responsável. Ver decisão 10 em `docs/architecture.md`, seção 8, para o que foi trocado por isso e qual é o caminho de volta.
 
 ### 1.7 Idioma
 
@@ -104,11 +103,10 @@ Itens sem os quais o MVP não pode ir ao ar:
 
 - Migrations SQL versionadas, com índices, RLS ligada nas nove tabelas, triggers de estorno e de meta, e o Custom Access Token Hook.
 - Backup semanal por GitHub Action, com restauração testada antes do lançamento. O plano gratuito do Supabase não tem backup nem PITR.
-- Faxina agendada de usuários anônimos órfãos, no mesmo workflow que evita a pausa dos **dois** projetos.
 - Dois ambientes: projeto Supabase de desenvolvimento e de produção, com migrations aplicadas em desenvolvimento antes de produção, e seed de dados fictícios.
 - Página de privacidade, exclusão de conta e transferência de `owner` ao sair da família.
 - Traduções completas em `pt`, `en` e `es`, com build falhando em chave faltante.
-- Testes de fluxo crítico: lançamento, estorno, meta alcançada, reabertura por estorno, isolamento entre famílias, acesso por link expirado, e sessão viva de link revogado.
+- Testes de fluxo crítico: lançamento, estorno, meta alcançada, reabertura por estorno, isolamento entre famílias, convite de uso único, e claim cortada ao desvincular a conta.
 - GitHub Action que evita a pausa do projeto Supabase por inatividade.
 - Página de privacidade explicando o tratamento mínimo de dados de menores.
 - Ícones do PWA, ilustrações do cofrinho nos quatro estados e oito avatares. São cerca de 14 ilustrações no caminho crítico.
@@ -125,7 +123,7 @@ Valor, periodicidade (semanal, quinzenal, mensal) e dia. O sistema credita sozin
 
 ### 2.2 Pedido de gasto e proposta de meta
 
-A criança pede uma baixa ("quero comprar figurinha, R$ 12") e propõe metas ("quero juntar pra bicicleta, R$ 400"). O pai aprova ou recusa no aplicativo; a aprovação gera a transação ou a meta. Tira o pai do papel de digitador e dá iniciativa à criança. Requer que o token de link possa ter escopo de escrita limitada, já previsto em `access_tokens.can_request`, o que enfraquece a garantia de somente leitura do link — por isso ficou fora do MVP.
+A criança pede uma baixa ("quero comprar figurinha, R$ 12") e propõe metas ("quero juntar pra bicicleta, R$ 400"). O pai aprova ou recusa no aplicativo; a aprovação gera a transação ou a meta. Tira o pai do papel de digitador e dá iniciativa à criança. Precisa de uma tabela de pedidos com policy própria, e de a criança deixar de ser estritamente somente leitura.
 
 ### 2.3 Tarefas com valor
 
@@ -196,13 +194,12 @@ Não entram nem no MVP nem no roteiro atual:
 3. Cadastro de criança, edição, arquivamento.
 4. Lançamento, estorno, saldo e histórico com autoria e filtro por período.
 5. Meta de poupança, com o trigger que a marca como alcançada e o estorno que a reabre.
-6. Link da criança: geração com rótulo e validade, troca por sessão, revogação que mata a sessão viva, limite de taxa em Postgres, tela da criança.
-7. Conta Google da criança, opcional, por convite emitido pelo pai.
-8. Idioma: `next-intl`, três arquivos de mensagem, resolução por `Accept-Language`, manifesto dinâmico.
-9. Camada lúdica: cofrinho ilustrado nos quatro estados, oito avatares, modos, animação.
-10. PWA: manifesto, service worker com `/c/*` na denylist, leitura offline, onboarding de instalação.
-11. Ambientes: projetos Supabase de desenvolvimento e produção, CI de migrations, seed de desenvolvimento.
-12. Backup, faxina agendada, keep-alive com commit nos dois projetos, estado degradado de banco pausado, página de privacidade.
-13. Testes de fluxo crítico e publicação.
+6. Conta da criança: convite emitido pelo responsável, vínculo, desvinculação, e a tela da criança.
+7. Idioma: `next-intl`, três arquivos de mensagem, resolução por `Accept-Language`, manifesto dinâmico.
+8. Camada lúdica: cofrinho ilustrado nos quatro estados, oito avatares, modos, animação.
+9. PWA: manifesto, service worker com `/c/*` na denylist, leitura offline, onboarding de instalação.
+10. Ambientes: projetos Supabase de desenvolvimento e produção, CI de migrations, seed de desenvolvimento.
+11. Backup, faxina agendada, keep-alive com commit nos dois projetos, estado degradado de banco pausado, página de privacidade.
+12. Testes de fluxo crítico e publicação.
 
 Cada etapa é entregável e testável isoladamente. As etapas 0 a 6 já formam um produto usável por uma família.

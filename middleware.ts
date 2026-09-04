@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * usuário é deslogado sem motivo aparente.
  *
  * O refresh também é o momento em que o Custom Access Token Hook roda de novo.
- * É por ali que a revogação de um link da criança passa a valer: o hook deixa
+ * É por ali que desvincular a conta de uma criança passa a valer: o hook deixa
  * de emitir a claim `child_id`, e a sessão perde o acesso.
  */
 export async function middleware(request: NextRequest) {

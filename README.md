@@ -13,7 +13,7 @@ Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanha
 
 - Vários responsáveis por família; um responsável pode participar de várias famílias.
 - Uma família nunca vê os dados de outra.
-- A criança acessa pelo link próprio, sem precisar de conta. Conta Google é opcional.
+- A criança acessa com conta própria (Google ou magic link), vinculada por convite do responsável.
 - Histórico de créditos e débitos imutável, com estorno em vez de edição.
 - Uma meta de poupança por criança: o saldo total alcança o alvo, a meta congela e não reabre.
 - PWA, mobile first, interface lúdica para 4 a 16 anos.

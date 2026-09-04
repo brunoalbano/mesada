@@ -83,21 +83,20 @@ select 'aaaaaaaa-0000-0000-0000-000000000002', fam_a, 'Joao', 'urso' from ids;
 insert into children (id, family_id, name, avatar_key)
 select 'bbbbbbbb-0000-0000-0000-000000000001', fam_b, 'Beto', 'raposa' from ids;
 
-insert into access_tokens (id, child_id, token_hash, expires_at, created_by) values
-  ('cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
-   '\x01'::bytea, now() + interval '365 days', '11111111-1111-1111-1111-111111111111'),
-  ('cccccccc-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001',
-   '\x02'::bytea, now() + interval '365 days', '11111111-1111-1111-1111-111111111111'),
-  ('cccccccc-0000-0000-0000-000000000003', 'bbbbbbbb-0000-0000-0000-000000000001',
-   '\x03'::bytea, now() + interval '365 days', '33333333-3333-3333-3333-333333333333');
+-- A crianca so entra com conta propria. A conta e ligada ao perfil por
+-- convite emitido pelo responsavel; nao existe mais link com token na URL.
+insert into invites (id, family_id, kind, child_id, token_hash, expires_at, created_by)
+select 'cccccccc-0000-0000-0000-000000000001', fam_a, 'child',
+       'aaaaaaaa-0000-0000-0000-000000000001', '\x01'::bytea,
+       now() + interval '7 days', '11111111-1111-1111-1111-111111111111' from ids;
 
-do $$
-declare r record;
-begin
-  select * into r from public.redeem_child_token(
-    '\x01'::bytea, '44444444-4444-4444-4444-444444444444', '203.0.113.7'::inet);
-  perform test_ok(r.status = 'ok' and r.child_id = 'aaaaaaaa-0000-0000-0000-000000000001',
-    'troca de token de link devolve o child_id');
+do $$ begin
+  perform set_config('request.jwt.claims',
+    '{"sub":"44444444-4444-4444-4444-444444444444"}', true);
+  perform test_ok(public.accept_child_invite('\x01'::bytea, 'google')
+                  = 'aaaaaaaa-0000-0000-0000-000000000001',
+    'conta da crianca e vinculada ao perfil por convite do responsavel');
+  perform set_config('request.jwt.claims', '', true);
 end $$;
 
 -- ===========================================================================
@@ -507,20 +506,20 @@ begin;
     '{"sub":"44444444-4444-4444-4444-444444444444","child_id":"aaaaaaaa-0000-0000-0000-000000000001"}';
   do $$ begin
     perform test_ok((select count(*) from children) = 1,
-      'crianca por link enxerga apenas o proprio perfil');
+      'crianca com conta propria enxerga apenas o proprio perfil');
     perform test_ok((select name from children) = 'Ana', 'e o perfil e o dela');
     perform test_ok(test_raises($q$
       insert into transactions (id, child_id, amount_cents, reason, created_by, created_by_name)
       values (gen_random_uuid(), 'aaaaaaaa-0000-0000-0000-000000000001', 100000, 'me dei mesada',
               '44444444-4444-4444-4444-444444444444', 'x') $q$, '42501'),
-      'crianca nao lanca nada: o link e somente leitura');
+      'crianca nao lanca nada: a conta dela e somente leitura');
     perform test_ok(test_raises($q$
       insert into goals (child_id, title, target_cents, created_by)
       values ('aaaaaaaa-0000-0000-0000-000000000001', 'meta propria', 100,
               '44444444-4444-4444-4444-444444444444') $q$, '42501'),
       'crianca nao cria meta');
-    perform test_ok((select count(*) from access_tokens) = 0,
-      'crianca nao enxerga os proprios tokens de acesso');
+    perform test_ok((select count(*) from child_identities) = 0,
+      'crianca nao enxerga a tabela de identidades');
   end $$;
 rollback;
 
@@ -551,16 +550,10 @@ begin;
   set local role authenticated;
   set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
   do $$ begin
-    perform test_ok(test_raises($q$ select token_hash from access_tokens limit 1 $q$, '42501'),
-      'nem o proprio pai le o hash do token: a aplicacao o deriva da URL');
     perform test_ok(test_raises($q$ select token_hash from invites limit 1 $q$, '42501'),
       'nem o owner le o hash de um convite');
-    perform test_ok((select count(*) from access_tokens) = 2,
-      'mas o pai continua enxergando os links da propria filha');
-    perform test_ok(test_raises($q$
-      select public.redeem_child_token('\x01'::bytea,
-        '55555555-5555-5555-5555-555555555555', '203.0.113.1'::inet) $q$, '42501'),
-      'sessao de usuario nao executa a troca de token: e so do service_role');
+    perform test_ok((select count(*) from invites) = 1,
+      'mas o owner continua enxergando os convites da familia');
     perform test_ok(test_raises($q$
       select public.custom_access_token_hook('{}'::jsonb) $q$, '42501'),
       'sessao de usuario nao executa o hook de emissao de JWT');
@@ -582,7 +575,7 @@ rollback;
 -- ===========================================================================
 begin;
   insert into invites (id, family_id, kind, child_id, token_hash, expires_at, created_by)
-  select gen_random_uuid(), fam_a, 'child', 'aaaaaaaa-0000-0000-0000-000000000001',
+  select gen_random_uuid(), fam_a, 'child', 'aaaaaaaa-0000-0000-0000-000000000002',
          '\xaa'::bytea, now() + interval '7 days', '11111111-1111-1111-1111-111111111111'
     from ids;
 
@@ -590,7 +583,7 @@ begin;
   set local request.jwt.claims = '{"sub":"66666666-6666-6666-6666-666666666666"}';
   do $$ begin
     perform test_ok(public.accept_child_invite('\xaa'::bytea, 'google')
-                    = 'aaaaaaaa-0000-0000-0000-000000000001',
+                    = 'aaaaaaaa-0000-0000-0000-000000000002',
       'conta real vincula-se ao perfil da crianca por convite do responsavel');
     perform test_ok(test_raises($q$ select public.accept_child_invite('\xaa'::bytea, 'google') $q$, 'P0001'),
       'o mesmo convite nao e usado duas vezes');
@@ -598,98 +591,43 @@ begin;
 
   set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
   do $$ begin
-    perform test_ok((select count(*) from child_identities where provider = 'google') = 1,
+    perform test_ok((select count(*) from child_identities
+                      where child_id = 'aaaaaaaa-0000-0000-0000-000000000002') = 1,
       'o responsavel enxerga a conta vinculada');
-    delete from child_identities where provider = 'google';
-    perform test_ok((select count(*) from child_identities where provider = 'google') = 0,
-      'e consegue desvincular: sem isso o acesso por conta era irrevogavel');
+    delete from child_identities where child_id = 'aaaaaaaa-0000-0000-0000-000000000002';
+    perform test_ok((select count(*) from child_identities
+                      where child_id = 'aaaaaaaa-0000-0000-0000-000000000002') = 0,
+      'e consegue desvincular: sem isso o acesso por conta seria irrevogavel');
   end $$;
 rollback;
 
 -- ===========================================================================
--- 12. Limite de taxa da troca de token
--- ===========================================================================
-do $$
-declare r record; i int;
-begin
-  for i in 1..3 loop
-    select * into r from public.redeem_child_token(
-      '\xdeadbeef'::bytea, '55555555-5555-5555-5555-555555555555', '198.51.100.5'::inet);
-  end loop;
-  perform test_ok(r.status = 'invalid', 'token inexistente devolve status invalid');
-  perform test_ok((select count(*) from token_exchange_attempts
-                    where not succeeded and client_ip = '198.51.100.5') = 3,
-    'a tentativa falha FICA gravada: com raise, ela era desfeita junto com a transacao');
-
-  for i in 1..10 loop
-    select * into r from public.redeem_child_token(
-      '\xdeadbeef'::bytea, '55555555-5555-5555-5555-555555555555', '198.51.100.5'::inet);
-  end loop;
-  perform test_ok(r.status = 'rate_limited', 'o limite por IP realmente dispara');
-  perform test_ok(not app.exchange_allowed('198.51.100.5'::inet),
-    'e o IP fica bloqueado para novas tentativas');
-end $$;
-
--- Dispositivo ja vinculado a uma crianca nao passa a ser outra.
-do $$
-declare r record;
-begin
-  select * into r from public.redeem_child_token(
-    '\x03'::bytea, '44444444-4444-4444-4444-444444444444', '203.0.113.20'::inet);
-  perform test_ok(r.status = 'bound_to_other_child' and r.child_id is null,
-    'dispositivo vinculado a Ana nao vira Beto ao abrir outro link');
-  perform test_ok((select child_id from child_identities
-                    where auth_user_id = '44444444-4444-4444-4444-444444444444')
-                  = 'aaaaaaaa-0000-0000-0000-000000000001',
-    'e o vinculo original permanece intacto');
-end $$;
-
--- ===========================================================================
--- 13. Hook do JWT
+-- 12. Hook do JWT
 -- ===========================================================================
 do $$
 declare claims jsonb;
 begin
-  perform set_config('request.jwt.claims',
-    '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
-
   claims := public.custom_access_token_hook(jsonb_build_object(
     'user_id', '44444444-4444-4444-4444-444444444444', 'claims', '{}'::jsonb)) -> 'claims';
   perform test_ok(claims ->> 'child_id' = 'aaaaaaaa-0000-0000-0000-000000000001',
-    'hook injeta child_id para link valido');
+    'hook injeta child_id para a conta vinculada da crianca');
+  perform test_ok(claims ->> 'child_scope' = 'read',
+    'e o escopo e somente leitura');
 
-  perform public.revoke_access_token('cccccccc-0000-0000-0000-000000000001');
+  -- Desvincular a conta corta o acesso no proximo refresh. E por isso que o
+  -- TTL do access token fica curto: e o tamanho da janela residual.
+  update child_identities set revoked_at = now()
+   where auth_user_id = '44444444-4444-4444-4444-444444444444';
 
   claims := public.custom_access_token_hook(jsonb_build_object(
     'user_id', '44444444-4444-4444-4444-444444444444', 'claims', '{}'::jsonb)) -> 'claims';
   perform test_ok(claims ->> 'child_id' is null,
-    'depois de revogar o link, o hook para de injetar a claim no refresh');
-end $$;
-
--- Expiracao tambem tem de cortar a claim no refresh, e nao so na troca.
-do $$
-declare claims jsonb; r record;
-begin
-  select * into r from public.redeem_child_token(
-    '\x02'::bytea, '55555555-5555-5555-5555-555555555555', '203.0.113.30'::inet);
-  perform test_ok(r.status = 'ok', 'segundo link e trocado por sessao');
+    'depois de revogar a identidade, o hook para de injetar a claim');
 
   claims := public.custom_access_token_hook(jsonb_build_object(
-    'user_id', '55555555-5555-5555-5555-555555555555', 'claims', '{}'::jsonb)) -> 'claims';
-  perform test_ok(claims ->> 'child_id' = 'aaaaaaaa-0000-0000-0000-000000000001',
-    'hook injeta a claim enquanto o link vale');
-
-  update access_tokens set expires_at = now() - interval '1 day'
-   where id = 'cccccccc-0000-0000-0000-000000000002';
-
-  claims := public.custom_access_token_hook(jsonb_build_object(
-    'user_id', '55555555-5555-5555-5555-555555555555', 'claims', '{}'::jsonb)) -> 'claims';
+    'user_id', '11111111-1111-1111-1111-111111111111', 'claims', '{}'::jsonb)) -> 'claims';
   perform test_ok(claims ->> 'child_id' is null,
-    'link expirado para de emitir a claim no refresh seguinte');
-
-  select * into r from public.redeem_child_token(
-    '\x02'::bytea, '55555555-5555-5555-5555-555555555555', '203.0.113.31'::inet);
-  perform test_ok(r.status = 'invalid', 'link expirado nao e trocado por sessao');
+    'conta de responsavel nunca recebe claim de crianca');
 end $$;
 
 \echo ''

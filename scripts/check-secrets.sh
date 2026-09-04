@@ -51,7 +51,7 @@ for arquivo in "${ARQUIVOS[@]}"; do
 
   # Variável de segredo com valor preenchido. O .env.example fica com o lado
   # direito vazio de propósito.
-  if grep -qE '^(SUPABASE_SERVICE_ROLE_KEY|TOKEN_PEPPER|NEXT_PUBLIC_SUPABASE_ANON_KEY)=.+' "$arquivo"; then
+  if grep -qE '^(SUPABASE_SERVICE_ROLE_KEY|TOKEN_PEPPER|NEXT_PUBLIC_SUPABASE_ANON_KEY|DATABASE_URL)=.+' "$arquivo"; then
     reportar "$arquivo" "variável de segredo com valor preenchido"
   fi
 

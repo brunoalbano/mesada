@@ -28,20 +28,3 @@ export async function clienteServidor() {
     },
   )
 }
-
-/**
- * Cliente com service_role. Ignora RLS por completo.
- *
- * Uso permitido em exatamente um lugar: a rota que troca o token do link da
- * criança por uma sessão, que precisa consultar access_tokens antes de existir
- * sessão. Qualquer outro uso é bug — o que não cabe em policy tem função
- * SECURITY DEFINER no banco. Ver docs/architecture.md seção 5.
- */
-export function clienteServico() {
-  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!chave) throw new Error('SUPABASE_SERVICE_ROLE_KEY ausente')
-
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, chave, {
-    cookies: { getAll: () => [], setAll: () => {} },
-  })
-}

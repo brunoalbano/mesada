@@ -9,6 +9,8 @@ Migrations aplicadas em ordem alfabética do nome do arquivo.
 | `20260904000003_rls.sql` | RLS ligada nas dez tabelas, `revoke`, grants por coluna, matriz de policies |
 | `20260904000004_rpc.sql` | operações que não são expressáveis como policy, e limite de taxa da troca de token |
 | `20260904000005_auth_hook.sql` | Custom Access Token Hook que injeta `child_id` no JWT |
+| `20260904000006_grants.sql` | privilégios de tabela explícitos, sem herdar da plataforma |
+| `20260904000007_remove_link_access.sql` | remove o acesso por link: a criança passa a entrar com conta própria |
 
 ## Rodar os testes
 
@@ -53,11 +55,11 @@ Depois, no painel:
 
 1. **Authentication > Hooks > Custom Access Token** aponta para `public.custom_access_token_hook`.
 2. **Authentication > Sessions**: TTL do access token em 600 a 900 segundos. O hook é o que revalida o link a cada refresh; um TTL longo alarga a janela entre revogar o link e a sessão morrer.
-3. **Authentication > Providers > Anonymous Sign-Ins** habilitado, e o limite de taxa elevado. A troca de token acontece no servidor, então todas as famílias compartilham os IPs de saída da Vercel.
+3. **Authentication > Providers > Google** configurado. Sign-in anônimo fica **desabilitado**: nada no produto depende dele desde que o acesso por link saiu.
 
 ## Detalhe que a aplicação precisa saber
 
-`invites` e `access_tokens` **não aceitam `select *`**. O `token_hash` é a credencial em si, e a única forma de escondê-lo de uma sessão de usuário é remover o `SELECT` da tabela e concedê-lo coluna a coluna. Liste as colunas nessas duas tabelas.
+`invites` **não aceita `select *`**. O `token_hash` é a credencial em si, e a única forma de escondê-lo de uma sessão de usuário é remover o `SELECT` da tabela e concedê-lo coluna a coluna. Liste as colunas.
 
 Motivo: revogar apenas a coluna não adianta enquanto existe o `SELECT` da tabela inteira, porque o privilégio mais amplo prevalece.
 
