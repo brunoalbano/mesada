@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { clienteServidor } from '@/lib/supabase/server'
 import { gerarToken, hashParaBanco } from '@/lib/tokens'
+import { AVATARES } from '@/components/Avatar'
+import { modoPorNascimento } from '@/lib/idade'
 
 export type ResultadoConvite =
   | { ok: true; token: string }
@@ -107,4 +109,81 @@ export async function sairDaFamilia(_anterior: unknown, dados: FormData) {
 
   revalidatePath('/')
   return { ok: true as const }
+}
+
+
+// ---------------------------------------------------------------------------
+// Crianças
+// ---------------------------------------------------------------------------
+
+export type ResultadoCrianca = { ok: true } | { ok: false; erro: 'invalido' | 'falhou' }
+
+const Crianca = z.object({
+  familyId: z.string().uuid(),
+  nome: z.string().trim().min(1).max(40),
+  avatar: z.enum(AVATARES),
+  // Opcional de propósito: é dado de menor, e serve só para escolher o modo
+  // de interface. Sem ela, o modo cai no padrão.
+  nascimento: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .or(z.literal('')),
+})
+
+export async function criarCrianca(
+  _anterior: unknown,
+  dados: FormData,
+): Promise<ResultadoCrianca> {
+  const entrada = Crianca.safeParse({
+    familyId: dados.get('familyId'),
+    nome: dados.get('nome'),
+    avatar: dados.get('avatar'),
+    nascimento: dados.get('nascimento') ?? '',
+  })
+  if (!entrada.success) return { ok: false, erro: 'invalido' }
+
+  const nascimento = entrada.data.nascimento || null
+  const supabase = await clienteServidor()
+  const { error } = await supabase.from('children').insert({
+    family_id: entrada.data.familyId,
+    name: entrada.data.nome,
+    avatar_key: entrada.data.avatar,
+    birthdate: nascimento,
+    ui_mode: modoPorNascimento(nascimento),
+  })
+
+  if (error) return { ok: false, erro: 'falhou' }
+
+  revalidatePath(`/familias/${entrada.data.familyId}`)
+  return { ok: true }
+}
+
+/**
+ * Arquivar, nunca apagar. O histórico da criança continua legível, e a policy
+ * de escrita já recusa lançamento novo em criança arquivada.
+ */
+export async function arquivarCrianca(dados: FormData): Promise<void> {
+  const id = z.string().uuid().safeParse(dados.get('id'))
+  const familyId = z.string().uuid().safeParse(dados.get('familyId'))
+  if (!id.success || !familyId.success) return
+
+  const supabase = await clienteServidor()
+  await supabase
+    .from('children')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id.data)
+
+  revalidatePath(`/familias/${familyId.data}`)
+}
+
+export async function desarquivarCrianca(dados: FormData): Promise<void> {
+  const id = z.string().uuid().safeParse(dados.get('id'))
+  const familyId = z.string().uuid().safeParse(dados.get('familyId'))
+  if (!id.success || !familyId.success) return
+
+  const supabase = await clienteServidor()
+  await supabase.from('children').update({ archived_at: null }).eq('id', id.data)
+
+  revalidatePath(`/familias/${familyId.data}`)
 }

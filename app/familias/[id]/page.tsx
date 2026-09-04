@@ -4,6 +4,7 @@ import { clienteServidor } from '@/lib/supabase/server'
 import { Cofrinho } from '@/components/Cofrinho'
 import { FormularioConvite } from './FormularioConvite'
 import { BotaoSair } from './BotaoSair'
+import { ListaCriancas } from './ListaCriancas'
 
 export default async function Familia({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -45,6 +46,13 @@ export default async function Familia({ params }: { params: Promise<{ id: string
         .order('created_at', { ascending: false })
     : { data: [] }
 
+  const { data: criancas } = await supabase
+    .from('children')
+    .select('id, name, avatar_key, archived_at')
+    .eq('family_id', id)
+    .order('archived_at', { ascending: true, nullsFirst: true })
+    .order('created_at', { ascending: true })
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-5 py-8">
       <header className="flex items-center gap-3">
@@ -70,6 +78,8 @@ export default async function Familia({ params }: { params: Promise<{ id: string
           })}
         </ul>
       </section>
+
+      <ListaCriancas familyId={familia.id} criancas={criancas ?? []} />
 
       {souOwner && <FormularioConvite familyId={familia.id} convites={convites ?? []} />}
 

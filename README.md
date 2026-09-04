@@ -2,7 +2,7 @@
 
 Aplicativo para pais controlarem a mesada dos filhos, e para os filhos acompanharem saldo, histórico e a meta de poupança.
 
-**Status: banco pronto e testado. Aplicação com login do responsável e criação de família.**
+**Status: em construção.** O banco está pronto e testado. A aplicação já faz login do responsável, família, convite de responsável, cadastro de criança, lançamento, estorno, saldo, histórico e meta.
 
 ## Documentos
 
