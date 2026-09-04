@@ -19,11 +19,13 @@ export function Historico({
   lancamentos,
   moeda,
   podeEstornar,
+  pequeno,
 }: {
   childId: string
   lancamentos: Lancamento[]
   moeda: string
   podeEstornar: boolean
+  pequeno: boolean
 }) {
   const t = useTranslations('crianca')
   const idioma = useLocale()
@@ -47,7 +49,7 @@ export function Historico({
             const foiEstornada = estornadas.has(lancamento.id)
             return (
               <li key={lancamento.id} className="flex items-center gap-3 py-3">
-                <span aria-hidden className="text-2xl">
+                <span aria-hidden className={pequeno ? 'text-4xl' : 'text-2xl'}>
                   {lancamento.emoji ?? (entrada ? '💰' : '🧾')}
                 </span>
 
@@ -55,14 +57,25 @@ export function Historico({
                   <span className={`truncate font-semibold ${foiEstornada ? 'line-through' : ''}`}>
                     {lancamento.reason}
                   </span>
+                  {/* No Modo Pequeno some data e autor: para quem tem 5 anos,
+                      "quem lançou" é ruído, e o que importa é o ícone e o
+                      valor. No Modo Grande a autoria é essencial, porque dois
+                      responsáveis usam o mesmo aplicativo. */}
                   <span className="text-xs text-slate-500">
-                    {formatar.dateTime(new Date(lancamento.created_at), {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                    {' · '}
-                    {t('por', { nome: lancamento.created_by_name })}
-                    {foiEstornada && ` · ${t('estornado')}`}
+                    {pequeno
+                      ? foiEstornada
+                        ? t('estornado')
+                        : ''
+                      : [
+                          formatar.dateTime(new Date(lancamento.created_at), {
+                            day: 'numeric',
+                            month: 'short',
+                          }),
+                          t('por', { nome: lancamento.created_by_name }),
+                          foiEstornada ? t('estornado') : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                   </span>
                 </span>
 

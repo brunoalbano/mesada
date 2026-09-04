@@ -3,6 +3,8 @@
 import { useActionState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { formatarCentavos } from '@/lib/money'
+import { useEffect, useState } from 'react'
+import { Comemoracao } from '@/components/Comemoracao'
 import { cancelarMeta, criarMeta, type ResultadoMeta } from './acoes'
 
 const INICIAL: ResultadoMeta = { ok: true }
@@ -22,27 +24,50 @@ export function PainelMeta({
   saldoCentavos,
   moeda,
   podeEditar,
+  pequeno,
 }: {
   childId: string
   meta: Meta | null
   saldoCentavos: number
   moeda: string
   podeEditar: boolean
+  pequeno: boolean
 }) {
   const t = useTranslations('crianca')
   const tComum = useTranslations('comum')
   const idioma = useLocale()
   const [resultado, enviar, pendente] = useActionState(criarMeta, INICIAL)
+  const alcancada = meta?.status === 'reached'
+  const [comemorar, setComemorar] = useState(false)
+
+  // Comemora uma vez por meta, não a cada visita. Guardar por id importa: sem
+  // isso o confete voltaria em todo carregamento e viraria irritação.
+  useEffect(() => {
+    if (!alcancada || !meta) return
+    const chave = `mesada:comemorada:${meta.id}`
+    try {
+      if (localStorage.getItem(chave)) return
+      localStorage.setItem(chave, '1')
+    } catch {
+      // Armazenamento bloqueado: comemora sempre, que é melhor do que nunca.
+    }
+    setComemorar(true)
+  }, [alcancada, meta])
 
   if (meta) {
-    const progresso = Math.min(saldoCentavos / meta.target_cents, 1)
-    const falta = Math.max(meta.target_cents - saldoCentavos, 0)
+    const progresso = alcancada ? 1 : Math.min(saldoCentavos / meta.target_cents, 1)
+    const falta = alcancada ? 0 : Math.max(meta.target_cents - saldoCentavos, 0)
 
     return (
-      <section className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm">
+      <section
+        className={`flex flex-col gap-3 rounded-3xl p-5 shadow-sm ${
+          alcancada ? 'bg-moeda/15 ring-2 ring-moeda' : 'bg-white'
+        }`}
+      >
+        <Comemoracao ativo={comemorar} />
         <div className="flex items-center gap-3">
-          <span aria-hidden className="text-2xl">
-            {meta.emoji}
+          <span aria-hidden className={pequeno ? 'text-4xl' : 'text-2xl'}>
+            {alcancada ? '🏆' : meta.emoji}
           </span>
           <h2 className="flex-1 font-titulo text-lg font-bold">{meta.title}</h2>
           <span className="text-sm font-semibold text-slate-500">
@@ -63,13 +88,17 @@ export function PainelMeta({
 
         {/* O texto repete o que a barra mostra: nenhuma informação existe só
             na cor ou só no comprimento. */}
-        <p className="text-sm font-semibold text-slate-600">
-          {falta === 0
+        <p
+          className={`font-semibold ${
+            alcancada ? 'font-titulo text-lg text-marca-escuro' : 'text-sm text-slate-600'
+          }`}
+        >
+          {alcancada
             ? t('metaAlcancada')
             : t('metaFalta', { valor: formatarCentavos(falta, idioma, moeda) })}
         </p>
 
-        {podeEditar && (
+        {podeEditar && !alcancada && (
           <form action={cancelarMeta}>
             <input type="hidden" name="id" value={meta.id} />
             <input type="hidden" name="childId" value={childId} />

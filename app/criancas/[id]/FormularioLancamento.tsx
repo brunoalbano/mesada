@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { MoedaCaindo } from '@/components/MoedaCaindo'
 import { lancar, type ResultadoLancamento } from './acoes'
 
 const INICIAL: ResultadoLancamento = { ok: true }
@@ -10,14 +11,24 @@ const MOTIVOS = ['💰', '🎁', '🍦', '🧸', '📚', '🃏'] as const
 export function FormularioLancamento({
   childId,
   arquivada,
+  pequeno,
 }: {
   childId: string
   arquivada: boolean
+  pequeno: boolean
 }) {
   const t = useTranslations('crianca')
   const tComum = useTranslations('comum')
   const [resultado, enviar, pendente] = useActionState(lancar, INICIAL)
   const [emoji, setEmoji] = useState<string>('💰')
+  const [moedas, setMoedas] = useState(0)
+
+  // Dispara a moeda quando um lançamento entra de fato. Amarrado ao resultado
+  // da ação, e não ao clique: animar antes de saber se deu certo mente para a
+  // criança.
+  useEffect(() => {
+    if (resultado.ok && !pendente) setMoedas((n) => n + 1)
+  }, [resultado, pendente])
 
   if (arquivada) {
     return (
@@ -38,7 +49,11 @@ export function FormularioLancamento({
     : null
 
   return (
-    <form action={enviar} className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm">
+    <form
+      action={enviar}
+      className="relative flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm"
+    >
+      <MoedaCaindo chave={moedas} discreta={!pequeno} />
       <input type="hidden" name="childId" value={childId} />
       <input type="hidden" name="emoji" value={emoji} />
 

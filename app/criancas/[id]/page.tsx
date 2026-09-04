@@ -34,11 +34,17 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
 
   const [{ data: saldo }, { data: meta }, { data: lancamentos }] = await Promise.all([
     supabase.from('child_balances').select('balance_cents').eq('child_id', id).maybeSingle(),
+    // Busca a meta ativa OU a última alcançada: a conquista precisa continuar
+    // visível depois de alcançada, senão a criança abre o app e não vê que
+    // conseguiu.
     supabase
       .from('goals')
       .select('id, title, emoji, target_cents, status, reached_at')
       .eq('child_id', id)
-      .eq('status', 'active')
+      .in('status', ['active', 'reached'])
+      .order('status', { ascending: true })
+      .order('reached_at', { ascending: false, nullsFirst: false })
+      .limit(1)
       .maybeSingle(),
     supabase
       .from('transactions')
@@ -49,7 +55,16 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
   ])
 
   const centavos = saldo?.balance_cents ?? 0
-  const progresso = meta ? Math.min(centavos / meta.target_cents, 1) : centavos > 0 ? 0.5 : 0
+  // Meta alcançada mostra 100% mesmo se o saldo caiu depois: a conquista
+  // congelou, e o cofrinho tem de contar a mesma história que o banco.
+  const progresso =
+    meta?.status === 'reached'
+      ? 1
+      : meta
+        ? Math.min(centavos / meta.target_cents, 1)
+        : centavos > 0
+          ? 0.5
+          : 0
 
   // Quem é responsável enxerga a própria linha em family_members; a criança não.
   const { data: souResponsavel } = await supabase
@@ -94,10 +109,15 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
         saldoCentavos={centavos}
         moeda={moeda}
         podeEditar={Boolean(souResponsavel)}
+        pequeno={pequeno}
       />
 
       {souResponsavel && (
-        <FormularioLancamento childId={crianca.id} arquivada={Boolean(crianca.archived_at)} />
+        <FormularioLancamento
+          childId={crianca.id}
+          arquivada={Boolean(crianca.archived_at)}
+          pequeno={pequeno}
+        />
       )}
 
       {souResponsavel && (
@@ -109,6 +129,7 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
         lancamentos={lancamentos ?? []}
         moeda={moeda}
         podeEstornar={Boolean(souResponsavel)}
+        pequeno={pequeno}
       />
     </main>
   )

@@ -31,3 +31,17 @@
     }
   }
 }
+
+@keyframes cair {
+  0% {
+    transform: translate(-50%, -40%) scale(0.6) rotate(-15deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 130%) scale(1) rotate(20deg);
+    opacity: 0;
+  }
+}
