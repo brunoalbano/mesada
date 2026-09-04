@@ -87,13 +87,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
-      - name: Falta configurar a Vercel
-        if: ${{ secrets.VERCEL_TOKEN == '' }}
+      # O contexto `secrets` não existe em `if` de step; só em `env` e `with`.
+      # Usá-lo ali quebra o parsing do workflow inteiro, e o GitHub reporta uma
+      # execução com zero jobs, sem nem aplicar os filtros de `on:`.
+      - name: Conferir credenciais da Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          echo "VERCEL_TOKEN não está definido neste Environment."
-          echo "As migrations de produção já foram aplicadas; só a publicação"
-          echo "da aplicação ficou de fora."
-          exit 1
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN não está definido no Environment 'producao'."
+            echo "As migrations de produção já foram aplicadas; só a publicação"
+            echo "da aplicação ficou de fora."
+            exit 1
+          fi
       - run: npm ci
       - run: npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
         env:
