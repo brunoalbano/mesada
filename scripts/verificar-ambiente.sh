@@ -121,6 +121,12 @@ echo ""
 nome=$(req "$TA" GET "profiles?select=display_name" | campo display_name)
 checar "auth.users é espelhado em profiles" "$([ -n "$nome" ] && echo sim)" "sim"
 
+# O embed do PostgREST depende de chave estrangeira declarada entre as duas
+# tabelas. Sem ela a consulta inteira falha, e a tela de família fica vazia
+# sem erro visível — foi exatamente o que aconteceu em produção.
+r=$(req "$TA" GET "family_members?select=user_id,role,profiles(display_name)&limit=1" | campo code)
+checar "responsáveis podem ser lidos junto com o perfil" "$r" ""
+
 # --- família e isolamento ---------------------------------------------------
 fam=$(curl -s --max-time 20 -X POST -H "apikey: $K" -H "Authorization: Bearer $TA" \
   -H "Content-Type: application/json" -d '{"p_name":"Verificação"}' \
