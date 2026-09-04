@@ -38,5 +38,30 @@
     "papelOwner": "You manage this",
     "papelParent": "You're a member",
     "criancas": "{contagem, plural, =0 {no children} one {# child} other {# children}}"
+  },
+  "convite": {
+    "invalidoTitulo": "Invalid invitation",
+    "invalidoTexto": "This link no longer works. Ask whoever invited you for a new one.",
+    "recusadoTitulo": "Couldn't accept it",
+    "recusadoTexto": "The invitation expired, was already used, or was cancelled.",
+    "entrarTitulo": "Sign in to accept",
+    "entrarTexto": "You need to sign in with your account to join the family.",
+    "entrarGoogle": "Continue with Google",
+    "entrarOutro": "I'd rather use email"
+  },
+  "familia": {
+    "responsaveis": "Grown-ups",
+    "convidar": "Invite a grown-up",
+    "convidando": "Inviting…",
+    "emailOpcional": "Email (optional)",
+    "papel": "Can manage the family",
+    "conviteCriado": "Copy the link now. It won't be shown again.",
+    "convitesPendentes": "Pending invitations",
+    "revogar": "Cancel invitation",
+    "expiraEm": "Valid until {data}",
+    "semPermissao": "Only a family manager can invite.",
+    "jaConvidado": "There is already a pending invitation for that email.",
+    "sair": "Leave family",
+    "ultimoOwner": "Hand management to someone else before leaving."
   }
 }

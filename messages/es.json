@@ -38,5 +38,30 @@
     "papelOwner": "Tú administras",
     "papelParent": "Tú participas",
     "criancas": "{contagem, plural, =0 {ningún niño} one {# niño} other {# niños}}"
+  },
+  "convite": {
+    "invalidoTitulo": "Invitación inválida",
+    "invalidoTexto": "Este enlace ya no sirve. Pídele otro a quien te invitó.",
+    "recusadoTitulo": "No se pudo aceptar",
+    "recusadoTexto": "La invitación venció, ya se usó o fue cancelada.",
+    "entrarTitulo": "Entra para aceptar",
+    "entrarTexto": "Necesitas entrar con tu cuenta para unirte a la familia.",
+    "entrarGoogle": "Continuar con Google",
+    "entrarOutro": "Prefiero entrar por correo"
+  },
+  "familia": {
+    "responsaveis": "Adultos",
+    "convidar": "Invitar a un adulto",
+    "convidando": "Invitando…",
+    "emailOpcional": "Correo (opcional)",
+    "papel": "Puede administrar la familia",
+    "conviteCriado": "Copia el enlace ahora. No se muestra de nuevo.",
+    "convitesPendentes": "Invitaciones pendientes",
+    "revogar": "Cancelar invitación",
+    "expiraEm": "Válida hasta {data}",
+    "semPermissao": "Solo quien administra la familia puede invitar.",
+    "jaConvidado": "Ya hay una invitación pendiente para ese correo.",
+    "sair": "Salir de la familia",
+    "ultimoOwner": "Pasa la administración a otra persona antes de salir."
   }
 }

@@ -38,5 +38,30 @@
     "papelOwner": "Você administra",
     "papelParent": "Você participa",
     "criancas": "{contagem, plural, =0 {nenhuma criança} one {# criança} other {# crianças}}"
+  },
+  "convite": {
+    "invalidoTitulo": "Convite inválido",
+    "invalidoTexto": "Esse link não vale mais. Peça outro para quem te convidou.",
+    "recusadoTitulo": "Não deu para aceitar",
+    "recusadoTexto": "O convite expirou, já foi usado ou foi cancelado.",
+    "entrarTitulo": "Entre para aceitar",
+    "entrarTexto": "Você precisa entrar com sua conta para participar da família.",
+    "entrarGoogle": "Entrar com Google",
+    "entrarOutro": "Prefiro entrar por e-mail"
+  },
+  "familia": {
+    "responsaveis": "Responsáveis",
+    "convidar": "Convidar responsável",
+    "convidando": "Convidando…",
+    "emailOpcional": "E-mail (opcional)",
+    "papel": "Pode administrar a família",
+    "conviteCriado": "Copie o link agora. Ele não aparece de novo.",
+    "convitesPendentes": "Convites pendentes",
+    "revogar": "Cancelar convite",
+    "expiraEm": "Vale até {data}",
+    "semPermissao": "Só quem administra a família pode convidar.",
+    "jaConvidado": "Já existe um convite pendente para esse e-mail.",
+    "sair": "Sair da família",
+    "ultimoOwner": "Passe a administração para outra pessoa antes de sair."
   }
 }
