@@ -30,6 +30,17 @@ create table token_exchange_attempts (
 create index token_exchange_attempts_ip_idx on token_exchange_attempts (client_ip, attempted_at desc);
 create index token_exchange_attempts_time_idx on token_exchange_attempts (attempted_at desc);
 
+-- Sem retencao a tabela cresce para sempre e o teto global passa a varrer um
+-- indice cada vez maior. Chamada pela faxina agendada.
+create or replace function app.purge_exchange_attempts() returns bigint
+language plpgsql security definer set search_path = '' as $$
+declare n bigint;
+begin
+  delete from public.token_exchange_attempts where attempted_at < now() - interval '1 day';
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
 alter table token_exchange_attempts enable row level security;
 revoke all on token_exchange_attempts from anon, authenticated;
 
@@ -58,8 +69,11 @@ declare
   v_user   uuid := auth.uid();
   v_family public.families;
 begin
-  if v_user is null then
-    raise exception 'sessão inválida';
+  -- Sessao anonima tambem tem role authenticated e auth.uid() nao nulo.
+  -- Sem esta checagem, qualquer um com a chave anon publica criava familias
+  -- em laco, sem nunca ter feito login.
+  if not app.is_real_user() then
+    raise exception 'esta ação exige uma conta' using errcode = 'MS005';
   end if;
 
   insert into public.families (name, locale, timezone, created_by)
@@ -80,17 +94,19 @@ end $$;
 -- ter sucesso. Quando o convite tras e-mail, o endereco tem de bater com o
 -- da conta que esta aceitando: convite de responsavel nao e ao portador.
 -- ---------------------------------------------------------------------------
-create or replace function public.accept_parent_invite(
-  p_token_hash bytea,
-  p_email      text default null
-) returns uuid
+-- O e-mail vem da sessao, nunca de parametro. Com o endereco vindo do
+-- chamador, quem lesse um convite podia satisfazer o proprio vinculo e
+-- escalar para owner.
+create or replace function public.accept_parent_invite(p_token_hash bytea)
+returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare
   v_user   uuid := auth.uid();
+  v_email  text := nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email';
   v_invite public.invites;
 begin
-  if v_user is null then
-    raise exception 'sessão inválida';
+  if not app.is_real_user() then
+    raise exception 'esta ação exige uma conta' using errcode = 'MS005';
   end if;
 
   update public.invites
@@ -100,7 +116,7 @@ begin
      and accepted_at is null
      and revoked_at is null
      and expires_at > now()
-     and (email is null or lower(email) = lower(p_email))
+     and (email is null or lower(email) = lower(v_email))
   returning * into v_invite;
 
   if not found then
@@ -130,8 +146,11 @@ declare
   v_user   uuid := auth.uid();
   v_invite public.invites;
 begin
-  if v_user is null then
-    raise exception 'sessão inválida';
+  -- Uma sessao de link nunca vira conta: posse do link viraria credencial
+  -- permanente, que sobrevive a revogacao do link.
+  if not app.is_real_user() then
+    raise exception 'vincular conta exige login com conta própria'
+      using errcode = 'MS005';
   end if;
   if p_provider not in ('google', 'email') then
     raise exception 'provider inválido para convite de criança: %', p_provider;
@@ -164,16 +183,24 @@ end $$;
 -- token, e a identidade so existe depois do usuario anonimo, entao o primeiro
 -- JWT sai sem a claim e precisa do refresh.
 -- ---------------------------------------------------------------------------
+-- Devolve status em vez de levantar excecao. Motivo concreto: "raise" aborta
+-- a transacao, e a insercao em token_exchange_attempts feita logo antes era
+-- desfeita junto. A tabela so acumulava sucessos, os dois contadores filtram
+-- por falha, e o limite nunca disparava: forca bruta ilimitada contra o link
+-- da crianca. Com status de retorno, a falha e gravada e permanece gravada.
 create or replace function public.redeem_child_token(
   p_token_hash   bytea,
   p_auth_user_id uuid,
   p_client_ip    inet
-) returns uuid
+) returns table (child_id uuid, status text)
 language plpgsql security definer set search_path = '' as $$
-declare v_token public.access_tokens;
+declare
+  v_token    public.access_tokens;
+  v_existing public.child_identities;
 begin
   if not app.exchange_allowed(p_client_ip) then
-    raise exception 'limite de tentativas excedido';
+    return query select null::uuid, 'rate_limited';
+    return;
   end if;
 
   select * into v_token
@@ -185,17 +212,36 @@ begin
 
   if not found then
     insert into public.token_exchange_attempts (client_ip, succeeded) values (p_client_ip, false);
-    raise exception 'link inválido ou expirado';
+    return query select null::uuid, 'invalid';
+    return;
   end if;
 
-  insert into public.child_identities (child_id, auth_user_id, provider, access_token_id)
-  values (v_token.child_id, p_auth_user_id, 'link', v_token.id)
-  on conflict (auth_user_id) do nothing;
+  -- auth_user_id e unico. Sem tratar o conflito, um dispositivo ja vinculado a
+  -- um filho que abrisse o link de outro recebia sucesso e o child_id novo,
+  -- enquanto o hook seguia carimbando o antigo: a interface de um filho com o
+  -- extrato do outro.
+  select * into v_existing from public.child_identities
+   where auth_user_id = p_auth_user_id;
+
+  if found and v_existing.child_id <> v_token.child_id then
+    insert into public.token_exchange_attempts (client_ip, succeeded) values (p_client_ip, false);
+    return query select null::uuid, 'bound_to_other_child';
+    return;
+  end if;
+
+  if found then
+    update public.child_identities
+       set access_token_id = v_token.id, revoked_at = null, linked_at = now()
+     where auth_user_id = p_auth_user_id;
+  else
+    insert into public.child_identities (child_id, auth_user_id, provider, access_token_id)
+    values (v_token.child_id, p_auth_user_id, 'link', v_token.id);
+  end if;
 
   update public.access_tokens set last_used_at = now() where id = v_token.id;
   insert into public.token_exchange_attempts (client_ip, succeeded) values (p_client_ip, true);
 
-  return v_token.child_id;
+  return query select v_token.child_id, 'ok';
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -210,12 +256,11 @@ returns setof uuid
 language plpgsql security definer set search_path = '' as $$
 declare v_child uuid;
 begin
+  -- Uma mensagem so para os dois casos: duas mensagens diferentes diriam a um
+  -- estranho se um id de link existe.
   select child_id into v_child from public.access_tokens where id = p_token_id;
-  if v_child is null then
-    raise exception 'link não encontrado';
-  end if;
-  if not app.is_family_parent(v_child) then
-    raise exception 'sem permissão para revogar este link';
+  if v_child is null or not app.is_family_parent(v_child) then
+    raise exception 'link não encontrado' using errcode = 'MS004';
   end if;
 
   update public.access_tokens
@@ -239,6 +284,10 @@ declare
   v_role   text;
   v_owners int;
 begin
+  if not app.is_real_user() then
+    raise exception 'esta ação exige uma conta' using errcode = 'MS005';
+  end if;
+
   select role into v_role from public.family_members
    where family_id = p_family_id and user_id = v_user;
   if v_role is null then
@@ -263,15 +312,30 @@ end $$;
 -- Por padrao o Postgres concede EXECUTE a PUBLIC. Revogar primeiro, e conceder
 -- so a quem precisa.
 revoke execute on function public.create_family(text, text, text)          from public;
-revoke execute on function public.accept_parent_invite(bytea, text)        from public;
+revoke execute on function public.accept_parent_invite(bytea)              from public;
 revoke execute on function public.accept_child_invite(bytea, text)         from public;
 revoke execute on function public.leave_family(uuid)                       from public;
 revoke execute on function public.revoke_access_token(uuid)                from public;
 revoke execute on function public.redeem_child_token(bytea, uuid, inet)    from public;
+-- Os helpers de app tambem nascem com EXECUTE para PUBLIC.
+--
+-- Atencao: expressao de policy e avaliada com o direito de QUEM CONSULTA, nao
+-- do dono da tabela. Os helpers usados dentro de policy precisam continuar
+-- executaveis por authenticated, senao toda leitura vira
+-- "permission denied for function". Quem nao aparece em policy fica fechado.
 revoke execute on function app.exchange_allowed(inet)                      from public;
+revoke execute on function app.purge_exchange_attempts()                   from public;
+revoke execute on function app.is_family_member(uuid)                      from public;
+revoke execute on function app.is_family_owner(uuid)                       from public;
+revoke execute on function app.is_family_parent(uuid)                      from public;
+revoke execute on function app.is_active_family_child(uuid)                from public;
+revoke execute on function app.shares_family_with(uuid)                    from public;
+revoke execute on function app.child_balance(uuid)                         from public;
+revoke execute on function app.lock_child(uuid)                            from public;
+revoke execute on function app.handle_new_user()                           from public;
 
 grant execute on function public.create_family(text, text, text)   to authenticated;
-grant execute on function public.accept_parent_invite(bytea, text) to authenticated;
+grant execute on function public.accept_parent_invite(bytea) to authenticated;
 grant execute on function public.accept_child_invite(bytea, text)  to authenticated;
 grant execute on function public.leave_family(uuid)                to authenticated;
 grant execute on function public.revoke_access_token(uuid)         to authenticated;
@@ -279,4 +343,12 @@ grant execute on function public.revoke_access_token(uuid)         to authentica
 -- A troca de token e chamada apenas pela rota de servidor, com service_role.
 -- Nenhuma sessao de usuario pode executa-la.
 grant execute on function public.redeem_child_token(bytea, uuid, inet) to service_role;
+grant execute on function app.purge_exchange_attempts() to service_role;
 grant usage on schema app to authenticated, service_role;
+
+-- Usados dentro das policies.
+grant execute on function app.is_family_member(uuid)       to authenticated;
+grant execute on function app.is_family_owner(uuid)        to authenticated;
+grant execute on function app.is_family_parent(uuid)       to authenticated;
+grant execute on function app.is_active_family_child(uuid) to authenticated;
+grant execute on function app.shares_family_with(uuid)     to authenticated;

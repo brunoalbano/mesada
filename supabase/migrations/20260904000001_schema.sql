@@ -18,7 +18,8 @@ create table profiles (
   display_name text not null,
   avatar_url   text,
   locale       text check (locale in ('pt', 'en', 'es')),
-  updated_at   timestamptz not null default now()
+  updated_at   timestamptz not null default now(),
+  constraint display_name_sane check (length(btrim(display_name)) between 1 and 60)
 );
 
 -- ---------------------------------------------------------------------------
@@ -155,11 +156,12 @@ create table transactions (
   source          text not null default 'manual'
                   check (source in ('manual', 'recurring', 'chore', 'request')),
   created_by      uuid references auth.users(id) on delete set null,
-  created_by_name text not null,
+  created_by_name text not null,   -- preenchido por trigger, nao pelo cliente
   created_at      timestamptz not null default now(),
   constraint amount_not_zero check (amount_cents <> 0),
   constraint amount_sane     check (amount_cents between -100000000 and 100000000),
   constraint reason_sane     check (length(btrim(reason)) between 1 and 200),
+  constraint created_by_name_sane check (length(btrim(created_by_name)) between 1 and 60),
   -- alvo da FK composta abaixo
   constraint transactions_id_child unique (id, child_id),
   -- um estorno so pode apontar para transacao da MESMA crianca; sem isso um
@@ -184,20 +186,43 @@ create table goals (
   status        text not null default 'active'
                 check (status in ('active', 'reached', 'cancelled')),
   reached_at    timestamptz,
-  reached_by_transaction_id uuid references transactions(id) on delete set null,
+  -- cascade, e nao "set null": anular deixaria a linha em 'reached' sem
+  -- procedencia, o que goal_status_consistent recusa, e o delete em cascata da
+  -- crianca falharia. Uma transacao so e apagada quando a crianca inteira e,
+  -- e ai a meta vai junto.
+  reached_by_transaction_id uuid references transactions(id) on delete cascade,
   cancelled_at  timestamptz,
   cancelled_by  uuid references auth.users(id) on delete set null,
   created_by    uuid references auth.users(id) on delete set null,
   created_at    timestamptz not null default now(),
   constraint goal_title_sane check (length(btrim(title)) between 1 and 60),
+  -- reached_by_transaction_id entra na constraint: sem ele, uma meta podia
+  -- nascer alcancada sem registrar o que a alcancou, e nenhum estorno
+  -- conseguiria mais reabri-la.
   constraint goal_status_consistent check (
     (status = 'reached')   = (reached_at   is not null) and
+    (status = 'reached')   = (reached_by_transaction_id is not null) and
     (status = 'cancelled') = (cancelled_at is not null)
   )
 );
 
 create unique index one_active_goal_per_child on goals (child_id) where status = 'active';
 create index goals_child_created_idx on goals (child_id, created_at desc);
+
+-- Predicado do caminho de estorno, que e quente. Sem este indice, cada estorno
+-- faz varredura sequencial em goals.
+create index goals_reached_by_idx on goals (reached_by_transaction_id)
+  where reached_by_transaction_id is not null;
+
+-- Chaves estrangeiras para auth.users: sem indice, apagar uma conta varre cada
+-- tabela referenciadora.
+create index transactions_created_by_idx  on transactions (created_by);
+create index goals_created_by_idx         on goals (created_by);
+create index goals_cancelled_by_idx       on goals (cancelled_by);
+create index families_created_by_idx      on families (created_by);
+create index access_tokens_created_by_idx on access_tokens (created_by);
+create index invites_created_by_idx       on invites (created_by);
+create index invites_accepted_by_idx      on invites (accepted_by);
 
 -- ---------------------------------------------------------------------------
 -- child_balances — o saldo definido em um lugar so, para nao divergir

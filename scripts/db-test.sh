@@ -23,3 +23,6 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
 done
 
 run "${PSQL[*]} -f $ROOT/supabase/tests/01_smoke.sql"
+
+# Concorrencia precisa de duas conexoes de verdade, entao roda fora do psql.
+bash "$ROOT/supabase/tests/02_concurrency.sh"

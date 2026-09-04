@@ -2,6 +2,9 @@
 -- Reproduz o minimo do ambiente Supabase de que as migrations dependem:
 -- o schema auth, auth.uid(), os roles e os privilegios padrao.
 
+-- Postgres 15 ou superior: child_balances usa security_invoker.
+create extension if not exists pgcrypto;
+
 create schema if not exists auth;
 
 create table if not exists auth.users (

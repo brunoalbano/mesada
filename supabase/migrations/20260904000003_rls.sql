@@ -23,12 +23,36 @@ alter table goals            enable row level security;
 -- child_identities e a unica entrada do hook que emite a claim child_id.
 -- Escrita ali equivale a causar um JWT legitimo com o child_id de outra
 -- crianca. So a rota de troca (service_role) e funcoes definer escrevem.
--- Cuidado: "revoke all" tambem tira o SELECT, e ai a policy nunca chega a ser
--- avaliada. Revogar apenas o que nenhuma sessao de usuario pode fazer, e
--- deixar a RLS decidir o resto.
-revoke insert, update, delete on child_identities from anon, authenticated;
-revoke insert, update, delete on family_members   from anon, authenticated;
-revoke update, delete on transactions             from anon, authenticated;
+-- Cuidado dobrado aqui. Privilegio de tabela e checado ANTES da RLS, entao
+-- todo revoke a mais transforma a policy correspondente em codigo morto:
+--   * "revoke all" tirava o SELECT, e o pai nao via os proprios links;
+--   * revogar DELETE em child_identities tornava impossivel desvincular a
+--     conta Google de um filho, ou seja, acesso permanente e irrevogavel;
+--   * revogar UPDATE em family_members impedia transferir a propriedade da
+--     familia, e com isso o ultimo owner nunca conseguia sair.
+-- Revogar apenas o que nenhuma sessao de usuario pode fazer por caminho
+-- nenhum, e deixar a RLS decidir o resto.
+revoke insert, update on child_identities from anon, authenticated;
+revoke insert         on family_members   from anon, authenticated;
+revoke update, delete on transactions     from anon, authenticated;
+
+-- token_hash e a credencial em si. Nenhuma sessao de usuario tem motivo para
+-- le-la: a aplicacao deriva o hash do token que veio na URL. Sem isto, qualquer
+-- membro lia o hash do convite de owner e escalava para owner.
+--
+-- Revogar a coluna nao basta enquanto existe o SELECT de tabela inteira: o
+-- privilegio mais amplo prevalece. E preciso tirar o SELECT da tabela e
+-- conceder coluna a coluna. Consequencia para a aplicacao: "select *" nestas
+-- duas tabelas passa a falhar, e as colunas tem de ser listadas.
+revoke select on invites, access_tokens from anon, authenticated;
+
+grant select (id, child_id, label, can_request, expires_at, revoked_at,
+              last_used_at, created_by, created_at)
+  on access_tokens to authenticated;
+
+grant select (id, family_id, kind, child_id, email, role, expires_at,
+              accepted_at, accepted_by, revoked_at, created_by, created_at)
+  on invites to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- profiles
@@ -89,6 +113,8 @@ create policy children_update on children for update
 create policy child_identities_select on child_identities for select
   using (app.is_family_parent(child_id));
 
+-- Desvincular a conta de um filho. E o unico caminho de revogacao de uma
+-- identidade que nao veio de link.
 create policy child_identities_delete on child_identities for delete
   using (app.is_family_parent(child_id));
 
@@ -99,7 +125,8 @@ create policy access_tokens_insert on access_tokens for insert
   with check (app.is_active_family_child(child_id) and created_by = auth.uid());
 
 create policy access_tokens_update on access_tokens for update
-  using (app.is_family_parent(child_id)) with check (app.is_family_parent(child_id));
+  using (app.is_family_parent(child_id))
+  with check (app.is_family_parent(child_id) and created_by = auth.uid());
 
 create policy access_tokens_delete on access_tokens for delete
   using (app.is_family_parent(child_id));
@@ -107,8 +134,9 @@ create policy access_tokens_delete on access_tokens for delete
 -- ---------------------------------------------------------------------------
 -- invites
 -- ---------------------------------------------------------------------------
+-- Convite e assunto de quem administra a familia.
 create policy invites_select on invites for select
-  using (app.is_family_member(family_id));
+  using (app.is_family_owner(family_id));
 
 create policy invites_insert on invites for insert
   with check (app.is_family_owner(family_id) and created_by = auth.uid());
@@ -142,7 +170,8 @@ create policy goals_insert on goals for insert
   with check (app.is_active_family_child(child_id) and created_by = auth.uid());
 
 create policy goals_update on goals for update
-  using (app.is_family_parent(child_id)) with check (app.is_family_parent(child_id));
+  using (app.is_family_parent(child_id))
+  with check (app.is_family_parent(child_id) and created_by = auth.uid());
 
 create policy goals_delete on goals for delete
   using (app.is_family_parent(child_id));

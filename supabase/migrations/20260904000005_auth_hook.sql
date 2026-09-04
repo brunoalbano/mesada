@@ -23,9 +23,12 @@ declare
   v_child_id uuid;
   v_scope    text;
 begin
-  select ci.child_id,
-         case when ci.provider = 'link' and not coalesce(t.can_request, false)
-              then 'read' else 'read' end
+  -- child_scope e constante 'read' no MVP, e nenhuma policy o consulta. A
+  -- versao anterior tinha um case cujos dois ramos devolviam 'read', o que
+  -- passava a impressao de uma verificacao de capacidade que nao existe.
+  -- access_tokens.can_request continua dormente ate o pos-MVP; quando entrar,
+  -- entra junto com a policy que o le.
+  select ci.child_id, 'read'
     into v_child_id, v_scope
     from public.child_identities ci
     left join public.access_tokens t on t.id = ci.access_token_id
@@ -34,6 +37,10 @@ begin
      -- identidade de link so vale enquanto o link vale
      and (ci.provider <> 'link'
           or (t.id is not null and t.revoked_at is null and t.expires_at > now()))
+   -- child_identities.auth_user_id e unico, entao no maximo uma linha casa.
+   -- A ordem existe para que a garantia nao dependa de um constraint que mora
+   -- em outro arquivo.
+   order by ci.linked_at desc
    limit 1;
 
   if v_child_id is not null then
