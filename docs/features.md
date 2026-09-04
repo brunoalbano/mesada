@@ -1,4 +1,4 @@
-# Cofrinho — Escopo de Funcionalidades
+# Mesada — Escopo de Funcionalidades
 
 **Status:** aprovado, revisado
 **Versão:** 2.0
@@ -82,7 +82,7 @@ A criança vê: saldo, histórico e metas. A criança nunca cria nem altera lan�
 - Idioma da criança herda o da família; o responsável pode fixar um por criança.
 - Datas, números e plurais formatados por `Intl` no idioma resolvido.
 - **A moeda não muda com o idioma.** Continua sendo a da família, sempre BRL no MVP.
-- O nome "Cofrinho" não é traduzido.
+- O nome "Mesada" não é traduzido.
 
 ### 1.8 Interface lúdica
 

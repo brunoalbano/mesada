@@ -1,10 +1,10 @@
-# Cofrinho — Documento de Arquitetura e Design
+# Mesada — Documento de Arquitetura e Design
 
 **Status:** aprovado, revisado
 **Versão:** 2.0
 **Data:** 2026-09-04
 
-Arquitetura, modelo de dados, autenticação e sistema de design do aplicativo **Cofrinho**. O repositório continua chamado `mesada`; o produto chama Cofrinho.
+Arquitetura, modelo de dados, autenticação e sistema de design do aplicativo **Mesada**. Produto e repositório se chamam **Mesada**. O cofrinho ilustrado é o elemento visual da marca, não o nome.
 
 A versão 2.0 incorpora três revisões independentes (segurança, modelo de dados, consistência e viabilidade). As correções estruturais estão marcadas com **[R]** ao longo do texto, e o registro completo está em `docs/review-2026-09-04.md`.
 
@@ -545,7 +545,7 @@ O modo vem da data de nascimento, com padrão `pequeno` quando ela não existe, 
 
 ### 6.2 Identidade visual
 
-- **Nome:** **Cofrinho**. Não é traduzido: é marca.
+- **Nome:** **Mesada**. Não é traduzido: é marca.
 - **Elemento central:** o cofrinho ilustrado. Sem mascote nomeado. Aparece no ícone, no estado vazio, no card de saldo, na comemoração e nas telas de erro. É o que faz a criança de 4 anos reconhecer o aplicativo sem saber ler.
 - **Estados do cofrinho:** vazio, com pouco, cheio e transbordando. Acompanha o progresso da meta, ou o saldo quando não há meta.
 - **Ícone:** cofrinho sobre círculo de cor sólida, sem texto. Legível a 48 px. Conjunto maskable completo.
@@ -608,14 +608,16 @@ A resolução acontece no servidor, na primeira renderização, para que a pági
 
 Fechadas em 2026-09-04.
 
-1. **Nome:** **Cofrinho**. Sem mascote nomeado; o cofrinho ilustrado é o elemento central. Repositório continua `mesada`. O nome não é traduzido.
+1. **Nome:** **Mesada**. Sem mascote nomeado; o cofrinho ilustrado é o elemento central da identidade. O nome não é traduzido.
+
+   O requisito de três idiomas decidiu a escolha. "Mesada" é palavra real em português **e** em espanhol, com o mesmo significado, e é pronunciável em inglês sem armadilha. Duas alternativas foram descartadas por motivo concreto: **Poupi** lê-se "poopy" em inglês, o que é fatal em aplicativo infantil; **Cofrinho** tem o dígrafo "nh", que não existe em inglês nem em espanhol, e trava o falante dos dois. O repositório já se chamava `mesada`.
 2. **Meta de poupança:** uma única meta ativa por criança, alvo sobre o saldo total, sem reserva. Ver 3.3.
 3. **Quem cria a meta:** somente o responsável. A criança acompanha. Mantém o link estritamente somente leitura, que é a mitigação mais forte contra vazamento de token.
 4. **Meta alcançada:** congela em `reached`. Queda posterior de saldo não reabre. **[R] Exceção:** o estorno da própria transação que alcançou a meta reabre, porque senão o único mecanismo de correção do produto não alcança a meta.
 5. **Validade do link:** 365 dias, renovável em um toque, com `last_used_at` e revogação. **[R]** A janela longa só é aceitável porque a revogação passou a matar a sessão viva (4.5 item 6); sem isso, 365 dias significavam acesso permanente.
 6. **Moeda:** somente BRL no MVP. Coluna de moeda em `families`, `transactions` e `goals`, congelada no lançamento.
 7. **Idioma:** português, inglês e espanhol, por `Accept-Language`, trocável à mão. Sem prefixo na URL. Idioma e moeda independentes.
-8. **Domínio:** `cofrinho.vercel.app` no início.
+8. **Domínio:** `mesada.vercel.app` no início.
 
 ---
 
