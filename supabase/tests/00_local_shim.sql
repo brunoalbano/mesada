@@ -32,10 +32,15 @@ end $$;
 
 grant usage on schema public to anon, authenticated, service_role;
 
--- O Supabase concede DML nas tabelas de public para anon e authenticated;
--- quem restringe e a RLS. Reproduzir isso e essencial: um teste que passa
--- porque faltou GRANT nao prova nada sobre as policies.
-alter default privileges in schema public
-  grant select, insert, update, delete on tables to anon, authenticated;
+-- Deliberadamente NAO ha ALTER DEFAULT PRIVILEGES aqui.
+--
+-- A versao anterior deste shim concedia DML por padrao, imitando o que se
+-- supunha que o Supabase faz. O projeto real nao concedeu nada, e a aplicacao
+-- respondia 42501 em toda leitura. O teste passava por causa de um GRANT que
+-- producao nao tinha.
+--
+-- Sem esta concessao, a suite so passa se a migration 0006 conceder o que a
+-- aplicacao precisa. E o mesmo raciocinio do outro lado: um teste que passa
+-- por causa de privilegio que o alvo nao tem nao prova nada.
 alter default privileges in schema public
   grant all on sequences to anon, authenticated;
