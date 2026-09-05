@@ -467,6 +467,35 @@ begin;
   end $$;
 rollback;
 
+-- Os dois responsaveis administram a mesma familia: quem nao criou a meta
+-- tambem cancela. A condicao anterior no with check via a linha DEPOIS do
+-- update, onde created_by ainda e o criador, e barrava o outro pai.
+begin;
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+  insert into goals (id, child_id, title, target_cents, created_by)
+  values ('eeeeeeee-0000-0000-0000-0000000000aa', 'aaaaaaaa-0000-0000-0000-000000000001',
+          'do pai A1', 90000, '11111111-1111-1111-1111-111111111111');
+
+  set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+  do $$ begin
+    -- Na meta ainda ativa: a autoria e imutavel para qualquer um.
+    perform test_ok(test_raises($q$
+      update goals set created_by = '22222222-2222-2222-2222-222222222222'
+       where id = 'eeeeeeee-0000-0000-0000-0000000000aa' $q$, 'MS004'),
+      'nenhum responsavel reescreve a autoria de uma meta');
+  end $$;
+
+  update goals set status = 'cancelled', cancelled_at = now(),
+                   cancelled_by = '22222222-2222-2222-2222-222222222222'
+   where id = 'eeeeeeee-0000-0000-0000-0000000000aa';
+  do $$ begin
+    perform test_ok((select status from goals where id = 'eeeeeeee-0000-0000-0000-0000000000aa')
+                    = 'cancelled',
+      'o outro responsavel cancela a meta que nao criou');
+  end $$;
+rollback;
+
 -- ===========================================================================
 -- 8. Meta criada com o saldo ja acima do alvo
 -- ===========================================================================

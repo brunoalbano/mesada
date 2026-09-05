@@ -6,7 +6,7 @@ import { MoedaCaindo } from '@/components/MoedaCaindo'
 import { emojiDoMotivo, type Sugestao } from '@/lib/sugestoes'
 import { lancar, type ResultadoLancamento } from './acoes'
 
-const INICIAL: ResultadoLancamento = { ok: true }
+const INICIAL: ResultadoLancamento = null
 const MOTIVOS = ['💰', '🎁', '🍦', '🧸', '📚', '🃏'] as const
 
 export function FormularioLancamento({
@@ -38,9 +38,10 @@ export function FormularioLancamento({
 
   // Dispara a moeda quando um lançamento entra de fato. Amarrado ao resultado
   // da ação, e não ao clique: animar antes de saber se deu certo mente para a
-  // criança.
+  // criança. O estado inicial é `null` justamente para este efeito não rodar
+  // na montagem — com `{ ok: true }` a moeda caía ao abrir a página.
   useEffect(() => {
-    if (resultado.ok && !pendente) {
+    if (resultado?.ok && !pendente) {
       setMoedas((n) => n + 1)
       setMotivo('')
     }
@@ -54,15 +55,21 @@ export function FormularioLancamento({
     )
   }
 
-  const erro = !resultado.ok
-    ? resultado.erro === 'valor'
-      ? t('valorInvalido')
-      : resultado.erro === 'motivo'
-        ? t('motivoInvalido')
-        : resultado.erro === 'arquivada'
-          ? t('arquivada')
-          : tComum('erroInesperado')
-    : null
+  const erro =
+    resultado && !resultado.ok
+      ? resultado.erro === 'valor'
+        ? t('valorInvalido')
+        : resultado.erro === 'motivo'
+          ? t('motivoInvalido')
+          : resultado.erro === 'arquivada'
+            ? t('arquivada')
+            : tComum('erroInesperado')
+      : null
+
+  // Confirmação que não depende de animação. Com movimento reduzido, ou com
+  // leitor de tela, a moeda caindo não existe — e sem isto o lançamento
+  // entrava sem nenhum retorno.
+  const sucesso = resultado?.ok === true
 
   return (
     <form
@@ -142,8 +149,14 @@ export function FormularioLancamento({
       </div>
 
       {erro && (
-        <p role="alert" className="text-sm font-semibold text-saida">
+        <p id="erro-lancamento" role="alert" className="text-base font-semibold text-saida">
           {erro}
+        </p>
+      )}
+
+      {sucesso && (
+        <p role="status" className="text-base font-semibold text-entrada">
+          {t('lancado')}
         </p>
       )}
 

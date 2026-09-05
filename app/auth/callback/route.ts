@@ -10,9 +10,17 @@ export async function GET(request: NextRequest) {
   const codigo = url.searchParams.get('code')
   const destino = url.searchParams.get('next') ?? '/'
 
-  // Só caminho relativo: `next` vem da URL e um destino absoluto viraria
-  // redirecionamento aberto para fora do aplicativo.
-  const destinoSeguro = destino.startsWith('/') && !destino.startsWith('//') ? destino : '/'
+  // Só caminho relativo. `next` vem da URL, e um destino absoluto viraria
+  // redirecionamento aberto: a sessão é criada no domínio real e a pessoa é
+  // jogada num site de terceiro carregando a confiança do aplicativo.
+  //
+  // A barra invertida também precisa ser recusada. A especificação de URL
+  // trata `\` como `/` em esquemas especiais, então `/\evil.com` passava nas
+  // duas checagens anteriores e resolvia para `https://evil.com/`.
+  const destinoSeguro =
+    destino.startsWith('/') && !/^[/\\]{2}/.test(destino) && !destino.includes('\\')
+      ? destino
+      : '/'
 
   if (!codigo) {
     return NextResponse.redirect(new URL('/entrar?erro=sem-codigo', url.origin))

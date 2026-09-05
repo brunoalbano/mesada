@@ -7,6 +7,20 @@ import { SeletorIdioma } from './SeletorIdioma'
 import { Sair } from './Sair'
 import { ConviteInstalacao } from '@/components/ConviteInstalacao'
 
+/** Lê `child_id` do JWT só para decidir a navegação; quem autoriza é a RLS. */
+function lerChildId(token: string): string | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    return (
+      (JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { child_id?: string })
+        .child_id ?? null
+    )
+  } catch {
+    return null
+  }
+}
+
 export default async function Familias() {
   const supabase = await clienteServidor()
   const {
@@ -14,6 +28,13 @@ export default async function Familias() {
   } = await supabase.auth.getUser()
 
   if (!user) redirect('/entrar')
+
+  // Sessão de criança não pertence a esta tela: sem isto ela via "nenhuma
+  // família ainda" e o formulário de criar uma.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (session && lerChildId(session.access_token)) redirect('/c/saldo')
 
   const t = await getTranslations('familias')
 

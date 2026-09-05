@@ -95,8 +95,7 @@ A criança entra com **conta própria**: Google ou magic link. Não existe acess
 
 - Instalável em Android e iOS, com ícone próprio e tela de abertura.
 - Onboarding que ensina a adicionar à tela de início.
-- Leitura offline do último saldo, histórico e meta conhecidos, pelo cache de navegação do service worker.
-- **Nunca em cache**: `/convite/*` e `/auth/*`. As duas carregam credencial na URL, e o cache de runtime guardaria a resposta indexada por esse caminho.
+- **Nada de página em cache.** Só estático: `_next/static`, ícones e fontes. Leitura offline de saldo e histórico saiu do MVP porque o CacheStorage é por origem e não por sessão — no tablet compartilhado ela vazaria dados entre quem usa o aparelho. Volta quando houver como guardar por sessão.
 
 ### 1.10 Fora do MVP, mas obrigatório junto com ele
 

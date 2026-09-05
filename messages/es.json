@@ -48,7 +48,13 @@
     "entrarTitulo": "Entra para aceptar",
     "entrarTexto": "Necesitas entrar con tu cuenta para unirte a la familia.",
     "entrarGoogle": "Continuar con Google",
-    "entrarOutro": "Prefiero entrar por correo"
+    "entrarOutro": "Prefiero entrar por correo",
+    "inicio": "Inicio",
+    "aceitar": "Aceptar invitación",
+    "aceitando": "Aceptando…",
+    "aceitarTituloPai": "Te invitaron a una familia",
+    "aceitarTituloFilho": "Tu cuenta se vinculará a tu perfil",
+    "aceitarTexto": "Esta invitación solo se puede usar una vez."
   },
   "familia": {
     "responsaveis": "Adultos",
@@ -105,7 +111,8 @@
     "metaAlcancada": "¡Lo lograste!",
     "metaJaExiste": "Ya hay una meta en curso.",
     "cancelarMeta": "Cancelar meta",
-    "voltar": "Volver"
+    "voltar": "Volver",
+    "lancado": "Listo, movimiento registrado."
   },
   "acesso": {
     "titulo": "Acceso de {nome}",

@@ -7,7 +7,15 @@ import { clienteServidor } from '@/lib/supabase/server'
 import { centavosDeTexto } from '@/lib/money'
 import { gerarToken, hashParaBanco } from '@/lib/tokens'
 
+/**
+ * `null` é o estado inicial: nem sucesso nem erro.
+ *
+ * Antes o inicial era `{ ok: true }`, e o efeito que comemora um lançamento
+ * disparava na montagem — a moeda caía toda vez que a página abria, como se
+ * dinheiro tivesse entrado.
+ */
 export type ResultadoLancamento =
+  | null
   | { ok: true }
   | { ok: false; erro: 'valor' | 'motivo' | 'arquivada' | 'falhou' }
 
@@ -75,36 +83,46 @@ export async function lancar(_anterior: unknown, dados: FormData): Promise<Resul
  * exato é verificado por trigger, então não há como um estorno "corrigir" para
  * um número diferente.
  */
-export async function estornar(dados: FormData): Promise<void> {
+export async function estornar(
+  dados: FormData,
+): Promise<{ ok: true } | { ok: false; erro: 'falhou' }> {
   const id = z.string().uuid().safeParse(dados.get('id'))
-  const childId = z.string().uuid().safeParse(dados.get('childId'))
-  if (!id.success || !childId.success) return
+  if (!id.success) return { ok: false as const, erro: 'falhou' as const }
 
   const supabase = await clienteServidor()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user) return { ok: false as const, erro: 'falhou' as const }
 
+  // child_id vem da transação, nunca do formulário: aceitar o do cliente
+  // seria pedir para estornar o lançamento de um irmão no saldo do outro.
+  // Hoje o banco barra pela chave estrangeira composta, mas a aplicação não
+  // deve depender disso para não tentar.
   const { data: original } = await supabase
     .from('transactions')
-    .select('amount_cents, reason')
+    .select('child_id, amount_cents, reason')
     .eq('id', id.data)
     .maybeSingle()
-  if (!original) return
+  if (!original) return { ok: false as const, erro: 'falhou' as const }
 
-  await supabase.from('transactions').insert({
+  // O motivo é preservado como está. A versão anterior gravava
+  // `Estorno: <motivo>` — uma palavra em português concatenada ao texto do
+  // usuário e persistida para sempre, exibida assim em inglês e espanhol.
+  // Que a linha é um estorno já está em `reverses_id`, e a interface traduz.
+  const { error } = await supabase.from('transactions').insert({
     id: randomUUID(),
-    child_id: childId.data,
+    child_id: original.child_id,
     amount_cents: -original.amount_cents,
-    reason: `Estorno: ${original.reason}`.slice(0, 200),
+    reason: original.reason,
     emoji: '↩️',
     reverses_id: id.data,
     created_by: user.id,
     created_by_name: '',
   })
 
-  revalidatePath(`/criancas/${childId.data}`)
+  revalidatePath(`/criancas/${original.child_id}`)
+  return error ? { ok: false as const, erro: 'falhou' as const } : { ok: true as const }
 }
 
 const Meta = z.object({

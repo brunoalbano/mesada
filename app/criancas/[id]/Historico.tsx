@@ -1,5 +1,6 @@
 'use client'
 
+import { useActionState } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { formatarCentavos } from '@/lib/money'
 import { estornar } from './acoes'
@@ -12,6 +13,36 @@ type Lancamento = {
   created_at: string
   created_by_name: string
   reverses_id: string | null
+}
+
+function BotaoEstornar({ id }: { id: string }) {
+  const t = useTranslations('crianca')
+  const tComum = useTranslations('comum')
+  const [resultado, enviar, pendente] = useActionState<
+    { ok: true } | { ok: false; erro: 'falhou' } | null,
+    FormData
+  >(async (_anterior, dados) => estornar(dados), null)
+
+  return (
+    <form action={enviar} className="flex flex-col items-end">
+      <input type="hidden" name="id" value={id} />
+      {/* Nome acessível de verdade, não só `title`: leitor de tela não lê
+          `title` de forma confiável, e "↩︎" sozinho não diz nada. */}
+      <button
+        type="submit"
+        disabled={pendente}
+        aria-label={t('estornar')}
+        className="h-12 w-12 rounded-2xl text-lg text-slate-500 disabled:opacity-50"
+      >
+        ↩︎
+      </button>
+      {resultado && !resultado.ok && (
+        <span role="alert" className="text-xs font-semibold text-saida">
+          {tComum('erroInesperado')}
+        </span>
+      )}
+    </form>
+  )
 }
 
 export function Historico({
@@ -91,17 +122,7 @@ export function Historico({
                 </span>
 
                 {podeEstornar && !foiEstornada && !lancamento.reverses_id && (
-                  <form action={estornar}>
-                    <input type="hidden" name="id" value={lancamento.id} />
-                    <input type="hidden" name="childId" value={childId} />
-                    <button
-                      type="submit"
-                      title={t('estornar')}
-                      className="h-12 w-12 rounded-2xl text-lg text-slate-400"
-                    >
-                      ↩︎
-                    </button>
-                  </form>
+                  <BotaoEstornar id={lancamento.id} />
                 )}
               </li>
             )

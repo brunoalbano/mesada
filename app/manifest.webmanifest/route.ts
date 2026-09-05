@@ -19,6 +19,8 @@ export async function GET() {
       description: t('descricao'),
       lang: idioma,
       dir: 'ltr',
+      // Fixo, e igual para todos: `/` decide sozinho para onde mandar cada um,
+      // porque a claim `child_id` no JWT já diz se a sessão é de criança.
       start_url: '/',
       scope: '/',
       display: 'standalone',

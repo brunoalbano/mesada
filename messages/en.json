@@ -48,7 +48,13 @@
     "entrarTitulo": "Sign in to accept",
     "entrarTexto": "You need to sign in with your account to join the family.",
     "entrarGoogle": "Continue with Google",
-    "entrarOutro": "I'd rather use email"
+    "entrarOutro": "I'd rather use email",
+    "inicio": "Home",
+    "aceitar": "Accept invitation",
+    "aceitando": "Accepting…",
+    "aceitarTituloPai": "You've been invited to a family",
+    "aceitarTituloFilho": "Your account will be linked to your profile",
+    "aceitarTexto": "This invitation can only be used once."
   },
   "familia": {
     "responsaveis": "Grown-ups",
@@ -105,7 +111,8 @@
     "metaAlcancada": "You did it!",
     "metaJaExiste": "There is already a goal in progress.",
     "cancelarMeta": "Cancel goal",
-    "voltar": "Back"
+    "voltar": "Back",
+    "lancado": "Done — the entry is saved."
   },
   "acesso": {
     "titulo": "{nome}'s access",

@@ -566,7 +566,12 @@ A resolução acontece no servidor, na primeira renderização, para que a pági
 
 - `manifest.webmanifest` por rota dinâmica, com ícones maskable, `display: standalone` e `theme_color`.
 - **`start_url` fixo**: `/` para o responsável, `/c/saldo` para a criança.
-- Service worker com Serwist: casco em cache; saldo, histórico e meta em *stale-while-revalidate*, para a criança abrir offline e ver o último estado, marcado com "atualizado às HH:MM".
+- Service worker com Serwist guardando **somente estático**: `_next/static`, ícones e fontes. Nenhuma página, nenhum payload RSC.
+
+  **Leitura offline de saldo e histórico não existe, e a ausência é deliberada.** O `defaultCache` do Serwist guarda navegações com NetworkFirst, o que gravaria nome dos filhos, saldo, histórico e autoria no CacheStorage — que é por origem, não por sessão. No tablet compartilhado que este produto assume, um responsável sai, outra pessoa entra, e uma rede lenta faz o cache servir a página de quem estava antes. Qualquer script na origem também lê tudo com um `caches.match()`.
+
+  A troca é perda real de recurso prometido. Ela volta quando houver forma de guardar por sessão.
+- Sair apaga o CacheStorage: cache sobrevive à atualização do service worker, e versões anteriores guardavam página autenticada.
 - **`/convite/*` e `/auth/*` nunca passam pelo cache**, por regra `NetworkOnly` declarada **antes** do `defaultCache` — a primeira regra que casa é a que vale.
 
   Duas camadas diferentes, e é fácil confundir: o `exclude` do `next.config.ts` tira as rotas do **precache**, e não do cache de **runtime**. O `defaultCache` do Serwist guarda navegações com NetworkFirst, então sem a regra explícita a resposta de `/convite/<token>` ficaria no CacheStorage indexada pelo caminho com o token.
