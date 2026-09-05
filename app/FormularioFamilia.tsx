@@ -22,7 +22,7 @@ export function FormularioFamilia() {
       <h2 className="font-titulo text-lg font-bold">{t('criarTitulo')}</h2>
 
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-semibold text-slate-700">{t('nome')}</span>
+        <span className="text-base font-semibold text-slate-700">{t('nome')}</span>
         <input
           name="nome"
           required

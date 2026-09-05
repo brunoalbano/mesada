@@ -35,6 +35,7 @@ export function PainelMeta({
 }) {
   const t = useTranslations('crianca')
   const tComum = useTranslations('comum')
+  const tModo = useTranslations(pequeno ? 'modo.pequeno' : 'modo.grande')
   const idioma = useLocale()
   const [resultado, enviar, pendente] = useActionState(criarMeta, INICIAL)
   const alcancada = meta?.status === 'reached'
@@ -61,7 +62,7 @@ export function PainelMeta({
     return (
       <section
         className={`flex flex-col gap-3 rounded-3xl p-5 shadow-sm ${
-          alcancada ? 'bg-moeda/15 ring-2 ring-moeda' : 'bg-white'
+          alcancada ? 'bg-moeda/20 ring-2 ring-marca-escuro' : 'bg-white'
         }`}
       >
         <Comemoracao ativo={comemorar} />
@@ -81,16 +82,19 @@ export function PainelMeta({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label={meta.title}
-          className="h-4 overflow-hidden rounded-full bg-slate-100"
+          className="h-5 overflow-hidden rounded-full bg-slate-200 ring-1 ring-slate-300"
         >
-          <div className="h-full rounded-full bg-moeda" style={{ width: `${progresso * 100}%` }} />
+          <div
+            className="h-full rounded-full bg-marca"
+            style={{ width: `${progresso * 100}%` }}
+          />
         </div>
 
         {/* O texto repete o que a barra mostra: nenhuma informação existe só
             na cor ou só no comprimento. */}
         <p
           className={`font-semibold ${
-            alcancada ? 'font-titulo text-lg text-marca-escuro' : 'text-sm text-slate-600'
+            alcancada ? 'font-titulo text-lg text-marca-escuro' : 'text-base text-slate-700'
           }`}
         >
           {alcancada
@@ -102,7 +106,7 @@ export function PainelMeta({
           <form action={cancelarMeta}>
             <input type="hidden" name="id" value={meta.id} />
             <input type="hidden" name="childId" value={childId} />
-            <button type="submit" className="text-xs font-bold text-slate-400 underline">
+            <button type="submit" className="text-xs font-bold text-slate-600 underline">
               {t('cancelarMeta')}
             </button>
           </form>
@@ -125,11 +129,13 @@ export function PainelMeta({
 
   return (
     <form action={enviar} className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm">
-      <h2 className="font-titulo text-lg font-bold">{t('criarMeta')}</h2>
+      <h2 className="font-titulo text-lg font-bold">
+        {t('criarMeta')} <span className="sr-only">{tModo('meta')}</span>
+      </h2>
       <input type="hidden" name="childId" value={childId} />
 
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-semibold text-slate-700">{t('metaTitulo')}</span>
+        <span className="text-base font-semibold text-slate-700">{t('metaTitulo')}</span>
         <input
           name="titulo"
           required
@@ -139,12 +145,12 @@ export function PainelMeta({
       </label>
 
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-semibold text-slate-700">{t('metaAlvo')}</span>
+        <span className="text-base font-semibold text-slate-700">{t('metaAlvo')}</span>
         <input
           name="alvo"
           required
           inputMode="decimal"
-          placeholder="0,00"
+          placeholder={t('valorExemplo')}
           className="min-h-12 rounded-2xl border-2 border-slate-200 px-4 text-base outline-none focus:border-marca"
         />
       </label>

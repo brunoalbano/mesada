@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
+import { getMessages, getTranslations } from 'next-intl/server'
 import { Baloo_2, Nunito } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import { resolverIdioma } from '@/lib/i18n'
@@ -8,9 +8,18 @@ import './globals.css'
 const titulo = Baloo_2({ subsets: ['latin'], variable: '--fonte-titulo', display: 'swap' })
 const corpo = Nunito({ subsets: ['latin'], variable: '--fonte-corpo', display: 'swap' })
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('manifesto')
+  return {
+    ...metadataBase,
+    // A descrição é o que aparece ao compartilhar o link; fixá-la em português
+    // contradizia o manifesto, que já nasce no idioma resolvido.
+    description: t('descricao'),
+  }
+}
+
+const metadataBase: Metadata = {
   title: 'Mesada',
-  description: 'A mesada dos seus filhos, sem caderno e sem planilha.',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Mesada', statusBarStyle: 'default' },
   icons: {

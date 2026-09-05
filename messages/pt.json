@@ -112,7 +112,15 @@
     "metaJaExiste": "Já existe uma meta em andamento.",
     "cancelarMeta": "Cancelar meta",
     "voltar": "Voltar",
-    "lancado": "Pronto, lançamento registrado."
+    "lancado": "Pronto, lançamento registrado.",
+    "tipo": "O que aconteceu?",
+    "icone": "Ícone",
+    "valorExemplo": "0,00",
+    "entradaPalavra": "entrada",
+    "saidaPalavra": "saída",
+    "aindaMais": "Mostrando os {contagem} lançamentos mais recentes.",
+    "valorIlegivel": "Não entendi esse valor. Use vírgula para os centavos, como 12,50.",
+    "valorAlto": "Esse valor é alto demais. O máximo é R$ 1.000.000,00."
   },
   "acesso": {
     "titulo": "Acesso de {nome}",
@@ -138,5 +146,31 @@
     "titulo": "O cofrinho está dormindo",
     "texto": "Não consegui falar com o servidor agora. Seu dinheiro está guardado; é só tentar de novo em instantes.",
     "tentarDeNovo": "Tentar de novo"
+  },
+  "avatares": {
+    "gato": "Gato",
+    "urso": "Urso",
+    "raposa": "Raposa",
+    "coelho": "Coelho",
+    "panda": "Panda",
+    "leao": "Leão",
+    "sapo": "Sapo",
+    "pinguim": "Pinguim"
+  },
+  "modo": {
+    "pequeno": {
+      "adicionar": "Ganhou",
+      "descontar": "Gastou",
+      "tipo": "O que aconteceu?",
+      "historico": "O que já rolou",
+      "meta": "O que quero"
+    },
+    "grande": {
+      "adicionar": "Creditar",
+      "descontar": "Debitar",
+      "tipo": "Tipo de lançamento",
+      "historico": "Histórico",
+      "meta": "Meta"
+    }
   }
 }

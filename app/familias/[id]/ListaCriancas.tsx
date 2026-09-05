@@ -22,6 +22,7 @@ export function ListaCriancas({
   moeda: string
 }) {
   const t = useTranslations('criancas')
+  const tAvatares = useTranslations('avatares')
   const idioma = useLocale()
   const tComum = useTranslations('comum')
   const [resultado, enviar, pendente] = useActionState(criarCrianca, INICIAL)
@@ -75,7 +76,7 @@ export function ListaCriancas({
         <input type="hidden" name="avatar" value={avatar} />
 
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-semibold text-slate-700">{t('nome')}</span>
+          <span className="text-base font-semibold text-slate-700">{t('nome')}</span>
           <input
             name="nome"
             required
@@ -86,7 +87,7 @@ export function ListaCriancas({
         </label>
 
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-semibold text-slate-700">{t('avatar')}</legend>
+          <legend className="text-base font-semibold text-slate-700">{t('avatar')}</legend>
           <div className="flex flex-wrap gap-2">
             {AVATARES.map((chave) => (
               <button
@@ -96,14 +97,14 @@ export function ListaCriancas({
                 onClick={() => setAvatar(chave)}
                 className={`rounded-full ${avatar === chave ? 'ring-2 ring-marca' : ''}`}
               >
-                <Avatar chave={chave} nome={chave} />
+                <Avatar chave={chave} nome={tAvatares(chave)} />
               </button>
             ))}
           </div>
         </fieldset>
 
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-semibold text-slate-700">{t('nascimento')}</span>
+          <span className="text-base font-semibold text-slate-700">{t('nascimento')}</span>
           <input
             name="nascimento"
             type="date"

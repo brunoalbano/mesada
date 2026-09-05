@@ -51,14 +51,18 @@ export function Historico({
   moeda,
   podeEstornar,
   pequeno,
+  fuso,
 }: {
   childId: string
   lancamentos: Lancamento[]
   moeda: string
   podeEstornar: boolean
   pequeno: boolean
+  /** Fuso da família. Fixar São Paulo datava errado quem mora fora dele. */
+  fuso: string
 }) {
   const t = useTranslations('crianca')
+  const tModo = useTranslations(pequeno ? 'modo.pequeno' : 'modo.grande')
   const idioma = useLocale()
   const formatar = useFormatter()
 
@@ -69,7 +73,7 @@ export function Historico({
 
   return (
     <section className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm">
-      <h2 className="font-titulo text-lg font-bold">{t('historico')}</h2>
+      <h2 className="font-titulo text-lg font-bold">{tModo('historico')}</h2>
 
       {lancamentos.length === 0 ? (
         <p className="py-4 text-center text-sm text-slate-500">{t('semLancamentos')}</p>
@@ -98,9 +102,13 @@ export function Historico({
                         ? t('estornado')
                         : ''
                       : [
+                          // Com ano: sem ele, março do ano passado e deste
+                          // aparecem idênticos numa lista que cobre os dois.
                           formatar.dateTime(new Date(lancamento.created_at), {
                             day: 'numeric',
                             month: 'short',
+                            year: 'numeric',
+                            timeZone: fuso,
                           }),
                           t('por', { nome: lancamento.created_by_name }),
                           foiEstornada ? t('estornado') : null,
@@ -115,9 +123,14 @@ export function Historico({
                     entrada ? 'text-entrada' : 'text-saida'
                   }`}
                 >
-                  {/* Sinal explícito, além da cor: daltonismo é comum, e a
-                      criança pequena ainda não lê o valor isolado. */}
-                  {entrada ? '+' : '−'}
+                  {/* Sinal explícito, além da cor. E a palavra para quem ouve:
+                      o leitor de tela não anuncia o sinal de menos com a
+                      pontuação no padrão, então antes um crédito e um débito
+                      soavam idênticos. */}
+                  <span className="sr-only">
+                    {entrada ? t('entradaPalavra') : t('saidaPalavra')}{' '}
+                  </span>
+                  <span aria-hidden>{entrada ? '+' : '−'}</span>
                   {formatarCentavos(Math.abs(lancamento.amount_cents), idioma, moeda)}
                 </span>
 
@@ -128,6 +141,12 @@ export function Historico({
             )
           })}
         </ul>
+      )}
+
+      {/* A lista é cortada. Sem dizer isso, quem soma os lançamentos e compara
+          com o saldo encontra uma diferença sem explicação na tela. */}
+      {lancamentos.length >= 50 && (
+        <p className="text-sm text-slate-700">{t('aindaMais', { contagem: lancamentos.length })}</p>
       )}
     </section>
   )

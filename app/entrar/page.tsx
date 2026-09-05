@@ -1,12 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { clienteNavegador } from '@/lib/supabase/client'
 import { Cofrinho } from '@/components/Cofrinho'
+import { BarraTopo } from '@/components/BarraTopo'
 
-export default function Entrar() {
+export default function Pagina() {
+  // useSearchParams exige Suspense na renderização estática.
+  return (
+    <Suspense>
+      <Entrar />
+    </Suspense>
+  )
+}
+
+function Entrar() {
   const t = useTranslations('entrar')
+  const parametros = useSearchParams()
+  // O callback redireciona para cá com ?erro=... quando a troca de código
+  // falha. Sem ler isso, a pessoa voltava para um formulário em branco sem
+  // nenhuma explicação.
+  const erroDeVolta = parametros.get('erro')
   const [email, setEmail] = useState('')
   const [estado, setEstado] = useState<'parado' | 'enviando' | 'enviado' | 'erro'>('parado')
   const [erro, setErro] = useState<string | null>(null)
@@ -22,7 +38,14 @@ export default function Entrar() {
 
     const { error } = await clienteNavegador().auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+      options: {
+        // Preserva um convite pendente: sem isto, quem não tem conta Google
+        // aceitava o convite, pedia o link por e-mail, voltava para `/` e o
+        // cookie de convite expirava sem uso.
+        emailRedirectTo: `${location.origin}/auth/callback${
+          document.cookie.includes('convite=') ? '?next=/convite' : ''
+        }`,
+      },
     })
 
     if (error) {
@@ -42,11 +65,18 @@ export default function Entrar() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-8 px-6 py-10">
+      <BarraTopo />
       <header className="flex flex-col items-center gap-3 text-center">
         <Cofrinho estado="cheio" rotulo={t('titulo')} className="h-24 w-24" />
         <h1 className="font-titulo text-4xl font-bold text-marca-escuro">{t('titulo')}</h1>
         <p className="text-base text-slate-600">{t('subtitulo')}</p>
       </header>
+
+      {erroDeVolta && (
+        <p role="alert" className="rounded-2xl bg-white p-4 text-base font-semibold text-saida">
+          {t('falhou')}
+        </p>
+      )}
 
       {estado === 'enviado' ? (
         <p
@@ -58,7 +88,7 @@ export default function Entrar() {
       ) : (
         <form onSubmit={enviarLink} className="flex flex-col gap-4">
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-slate-700">{t('email')}</span>
+            <span className="text-base font-semibold text-slate-700">{t('email')}</span>
             <input
               type="email"
               inputMode="email"

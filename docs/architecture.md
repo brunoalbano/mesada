@@ -526,7 +526,9 @@ O modo vem da data de nascimento, com padrão `pequeno` quando ela não existe, 
 
 - Área de toque mínima de 48 por 48 px na interface da criança.
 - Contraste mínimo AA (4.5:1); valores em destaque acima disso.
-- Corpo de texto nunca abaixo de 16 px; valores acima de 32 px.
+- Corpo de texto nunca abaixo de 16 px; valores acima de 32 px. Texto de apoio — data, autoria, selo de arquivada — fica em 14 px, e é o piso: nada no aplicativo desce abaixo disso.
+- Foco sempre visível, com anel próprio. Trocar o anel do navegador por mudança de cor de borda desaparece para quem enxerga pouco.
+- Escolha única é `radiogroup` com `aria-checked`, nunca um punhado de botões com `aria-pressed`: o segundo anuncia alternadores independentes, sem dizer que é uma escolha só nem em que posição ela está.
 - `prefers-reduced-motion` desliga confete e movimento do cofrinho.
 - Toda animação tem leitura estática equivalente. Nenhuma informação existe só no movimento.
 - Navegação por teclado e rótulos ARIA em todos os controles.

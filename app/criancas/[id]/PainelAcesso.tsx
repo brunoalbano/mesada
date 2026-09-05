@@ -4,7 +4,9 @@ import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { convidarCrianca, desvincularConta, type ResultadoAcesso } from './acoes'
 
-const INICIAL: ResultadoAcesso = { ok: false, erro: 'falhou' }
+// `null`, e não um erro: o componente começava anunciando falha antes de
+// qualquer tentativa.
+const INICIAL = null as ResultadoAcesso | null
 
 type Conta = { auth_user_id: string; provider: string; linked_at: string }
 
@@ -19,19 +21,25 @@ export function PainelAcesso({
 }) {
   const t = useTranslations('acesso')
   const tComum = useTranslations('comum')
-  const [resultado, enviar, pendente] = useActionState(convidarCrianca, INICIAL)
+  const [resultado, enviar, pendente] = useActionState<ResultadoAcesso | null, FormData>(
+    async (_anterior, dados) => convidarCrianca(_anterior, dados),
+    INICIAL,
+  )
   const [copiado, setCopiado] = useState(false)
 
   const link =
-    resultado.ok && typeof location !== 'undefined'
+    resultado?.ok && typeof location !== 'undefined'
       ? `${location.origin}/convite/filho/${resultado.token}`
       : null
+
+  // Os dois ramos anteriores devolviam null, então qualquer falha que não
+  // fosse de permissão não aparecia: o botão voltava ao normal e nada mais.
   const erro =
-    !resultado.ok && resultado.erro === 'semPermissao'
-      ? t('semPermissao')
-      : !resultado.ok && link === null && pendente === false && resultado.erro === 'falhou'
-        ? null
-        : null
+    resultado && !resultado.ok
+      ? resultado.erro === 'semPermissao'
+        ? t('semPermissao')
+        : tComum('erroInesperado')
+      : null
 
   return (
     <section className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm">

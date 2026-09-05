@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { clienteServidor } from '@/lib/supabase/server'
 import { formatarCentavos } from '@/lib/money'
 import { Avatar } from '@/components/Avatar'
+import { BarraTopo } from '@/components/BarraTopo'
 import { Cofrinho, estadoPorProgresso } from '@/components/Cofrinho'
 import { sugerirMotivos } from '@/lib/sugestoes'
 import { FormularioLancamento } from './FormularioLancamento'
@@ -26,29 +27,34 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
   // claim child_id. Ausência de linha é 404, sem checagem no código.
   const { data: crianca } = await supabase
     .from('children')
-    .select('id, name, avatar_key, ui_mode, archived_at, family_id, families(name, currency)')
+    .select(
+      'id, name, avatar_key, ui_mode, archived_at, family_id, families(name, currency, timezone)',
+    )
     .eq('id', id)
     .maybeSingle()
   if (!crianca) notFound()
 
-  const familia = crianca.families as unknown as { name: string; currency: string } | null
+  const familia = crianca.families as unknown as {
+    name: string
+    currency: string
+    timezone: string
+  } | null
   const moeda = familia?.currency ?? 'BRL'
   const pequeno = crianca.ui_mode === 'pequeno'
 
-  const [{ data: saldo }, { data: meta }, { data: lancamentos }] = await Promise.all([
+  const [{ data: saldo }, { data: metas }, { data: lancamentos }] = await Promise.all([
     supabase.from('child_balances').select('balance_cents').eq('child_id', id).maybeSingle(),
-    // Busca a meta ativa OU a última alcançada: a conquista precisa continuar
-    // visível depois de alcançada, senão a criança abre o app e não vê que
-    // conseguiu.
+    // Ativa e alcançada são coisas diferentes e aparecem juntas: a conquista
+    // continua visível, e o formulário de criar a próxima aparece assim que
+    // não há meta ativa. Sem isso a criança que alcançava a meta ficava presa
+    // no troféu antigo, sem como começar outra.
     supabase
       .from('goals')
       .select('id, title, emoji, target_cents, status, reached_at')
       .eq('child_id', id)
       .in('status', ['active', 'reached'])
-      .order('status', { ascending: true })
       .order('reached_at', { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(2),
     supabase
       .from('transactions')
       .select('id, amount_cents, reason, emoji, created_at, created_by_name, reverses_id')
@@ -56,6 +62,10 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
       .order('created_at', { ascending: false })
       .limit(50),
   ])
+
+  const metaAtiva = (metas ?? []).find((m) => m.status === 'active') ?? null
+  const metaAlcancada = (metas ?? []).find((m) => m.status === 'reached') ?? null
+  const meta = metaAtiva ?? metaAlcancada
 
   const centavos = saldo?.balance_cents ?? 0
   // Meta alcançada mostra 100% mesmo se o saldo caiu depois: a conquista
@@ -87,6 +97,8 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 px-5 py-8">
+      <BarraTopo />
+
       <header className="flex flex-col gap-2">
         {/* Voltar explícito, e não só o gesto do navegador: instalado como
             PWA não existe barra de endereços, e o gesto de voltar do sistema
@@ -116,7 +128,7 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
       <section className="flex flex-col items-center gap-2 rounded-3xl bg-white p-6 shadow-sm">
         <Cofrinho
           estado={estadoPorProgresso(progresso)}
-          rotulo=""
+         
           className={pequeno ? 'h-28 w-28' : 'h-16 w-16'}
         />
         <p className="text-sm font-semibold text-slate-500">
@@ -151,7 +163,10 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
         />
       )}
 
-      {!meta && (
+      {/* Sem meta ATIVA, o formulário aparece — mesmo que uma alcançada esteja
+          na tela acima. O índice único do banco só cobre metas ativas, então
+          criar a próxima é legítimo e é o passo natural depois de conseguir. */}
+      {!metaAtiva && (
         <PainelMeta
           childId={crianca.id}
           meta={null}
@@ -172,6 +187,7 @@ export default async function Crianca({ params }: { params: Promise<{ id: string
         moeda={moeda}
         podeEstornar={Boolean(souResponsavel)}
         pequeno={pequeno}
+        fuso={familia?.timezone ?? 'America/Sao_Paulo'}
       />
 
       {souResponsavel && (

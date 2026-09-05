@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { centavosDeTexto, formatarCentavos } from './money'
+import { centavosDeTexto, formatarCentavos, lerCentavos } from './money'
 
 describe('centavosDeTexto', () => {
   it('lê vírgula e ponto como separador decimal', () => {
@@ -40,5 +40,18 @@ describe('formatarCentavos', () => {
 
   it('formata no padrão do idioma pedido', () => {
     expect(formatarCentavos(123456, 'pt', 'BRL').replace(/ /g, ' ')).toBe('R$ 1.234,56')
+  })
+})
+
+describe('lerCentavos', () => {
+  it('distingue vazio de ilegível de acima do limite', () => {
+    expect(lerCentavos('')).toEqual({ ok: false, erro: 'vazio' })
+    expect(lerCentavos('abc')).toEqual({ ok: false, erro: 'naoNumero' })
+    expect(lerCentavos('12,5,5')).toEqual({ ok: false, erro: 'naoNumero' })
+    expect(lerCentavos('2000000')).toEqual({ ok: false, erro: 'acimaDoLimite' })
+  })
+
+  it('devolve os centavos quando o valor é legível', () => {
+    expect(lerCentavos('12,50')).toEqual({ ok: true, centavos: 1250 })
   })
 })

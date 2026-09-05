@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Cofrinho } from '@/components/Cofrinho'
+import { BarraTopo } from '@/components/BarraTopo'
 import { aceitarConvite, type ResultadoConvite } from './acoes'
 
 const INICIAL = null as ResultadoConvite | null
@@ -17,7 +18,7 @@ export function BotaoAceitar({ tipo }: { tipo: 'pai' | 'filho' }) {
   if (resultado && !resultado.ok && resultado.erro === 'recusado') {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <Cofrinho estado="vazio" rotulo="" className="h-20 w-20" />
+        <Cofrinho estado="vazio" className="h-20 w-20" />
         <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{t('recusadoTitulo')}</h1>
         <p className="text-base text-slate-600">{t('recusadoTexto')}</p>
         <a href="/" className="botao rounded-2xl bg-marca px-6 py-3 text-base font-bold text-white">
@@ -29,7 +30,8 @@ export function BotaoAceitar({ tipo }: { tipo: 'pai' | 'filho' }) {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-5 px-6 text-center">
-      <Cofrinho estado="cheio" rotulo="" className="h-20 w-20" />
+      <BarraTopo />
+      <Cofrinho estado="cheio" className="h-20 w-20" />
       <h1 className="font-titulo text-2xl font-bold text-marca-escuro">
         {tipo === 'pai' ? t('aceitarTituloPai') : t('aceitarTituloFilho')}
       </h1>

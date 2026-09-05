@@ -112,7 +112,15 @@
     "metaJaExiste": "There is already a goal in progress.",
     "cancelarMeta": "Cancel goal",
     "voltar": "Back",
-    "lancado": "Done — the entry is saved."
+    "lancado": "Done — the entry is saved.",
+    "tipo": "What happened?",
+    "icone": "Icon",
+    "valorExemplo": "0.00",
+    "entradaPalavra": "in",
+    "saidaPalavra": "out",
+    "aindaMais": "Showing the {contagem} most recent entries.",
+    "valorIlegivel": "I couldn't read that amount. Use a period for cents, like 12.50.",
+    "valorAlto": "That amount is too high. The maximum is 1,000,000.00."
   },
   "acesso": {
     "titulo": "{nome}'s access",
@@ -138,5 +146,31 @@
     "titulo": "The piggy bank is asleep",
     "texto": "I couldn't reach the server right now. Your money is safe — just try again in a moment.",
     "tentarDeNovo": "Try again"
+  },
+  "avatares": {
+    "gato": "Cat",
+    "urso": "Bear",
+    "raposa": "Fox",
+    "coelho": "Rabbit",
+    "panda": "Panda",
+    "leao": "Lion",
+    "sapo": "Frog",
+    "pinguim": "Penguin"
+  },
+  "modo": {
+    "pequeno": {
+      "adicionar": "Got",
+      "descontar": "Spent",
+      "tipo": "What happened?",
+      "historico": "What happened so far",
+      "meta": "What I want"
+    },
+    "grande": {
+      "adicionar": "Credit",
+      "descontar": "Debit",
+      "tipo": "Entry type",
+      "historico": "History",
+      "meta": "Goal"
+    }
   }
 }

@@ -33,11 +33,20 @@ describe('mensagens', () => {
     ['en', en],
     ['es', es],
   ])('%s não tem texto vazio', (_idioma, traducao) => {
-    const vazias = Object.entries(traducao).flatMap(([grupo, valores]) =>
-      Object.entries(valores as Record<string, string>)
-        .filter(([, texto]) => texto.trim() === '')
-        .map(([chave]) => `${grupo}.${chave}`),
-    )
+    // Recursivo: os grupos aninham em mais de um nível desde que o vocabulário
+    // por modo entrou. A versão anterior assumia dois níveis e quebrava.
+    const vazias: string[] = []
+    const percorrer = (objeto: unknown, prefixo: string) => {
+      if (typeof objeto === 'string') {
+        if (objeto.trim() === '') vazias.push(prefixo)
+        return
+      }
+      if (typeof objeto !== 'object' || objeto === null) return
+      for (const [chave, valor] of Object.entries(objeto)) {
+        percorrer(valor, prefixo ? `${prefixo}.${chave}` : chave)
+      }
+    }
+    percorrer(traducao, '')
     expect(vazias).toEqual([])
   })
 })

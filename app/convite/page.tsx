@@ -46,7 +46,7 @@ function Aviso({
 }) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-      <Cofrinho estado="vazio" rotulo="" className="h-20 w-20" />
+      <Cofrinho estado="vazio" className="h-20 w-20" />
       <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{titulo}</h1>
       <p className="text-base text-slate-600">{texto}</p>
       <a href="/" className="botao rounded-2xl bg-marca px-6 py-3 text-base font-bold text-white">

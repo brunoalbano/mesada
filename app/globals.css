@@ -21,6 +21,12 @@
     @apply min-h-12 min-w-12;
   }
 
+  /* Foco sempre visível. Trocar o anel por mudança de cor de borda some para
+     quem enxerga pouco, e os controles sem borda não indicavam nada. */
+  :where(a, button, input, select, textarea, [role='radio']):focus-visible {
+    @apply outline-none ring-2 ring-marca-escuro ring-offset-2;
+  }
+
   /* Toda animação tem leitura estática equivalente. */
   @media (prefers-reduced-motion: reduce) {
     *,

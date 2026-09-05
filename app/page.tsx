@@ -74,7 +74,7 @@ export default async function Familias() {
                   href={`/familias/${familia.id}`}
                   className="botao flex items-center gap-4 rounded-3xl bg-white p-4 shadow-sm"
                 >
-                  <Cofrinho estado="pouco" rotulo="" className="h-12 w-12 shrink-0" />
+                  <Cofrinho estado="pouco" className="h-12 w-12 shrink-0" />
                   <span className="flex flex-col">
                     <span className="font-titulo text-lg font-bold">{familia.name}</span>
                     <span className="text-sm text-slate-500">

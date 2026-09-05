@@ -28,6 +28,32 @@ export function formatarCentavos(centavos: number, idioma: string, moeda = 'BRL'
  * Devolve null quando não dá para ler um número — nunca NaN, que se propaga
  * em silêncio.
  */
+export type ErroDeValor = 'vazio' | 'naoNumero' | 'acimaDoLimite'
+
+/**
+ * Igual a `centavosDeTexto`, mas diz por que falhou.
+ *
+ * A mensagem única de antes — "digite um valor maior que zero" — descrevia um
+ * problema que a pessoa não tinha: quem digitou `12.5.5` ou um valor acima do
+ * teto via um texto sobre zero.
+ */
+export function lerCentavos(texto: string): { ok: true; centavos: number } | { ok: false; erro: ErroDeValor } {
+  const limpo = texto.trim()
+  if (limpo === '') return { ok: false, erro: 'vazio' }
+
+  const centavos = centavosDeTexto(limpo)
+  if (centavos === null) {
+    // `centavosDeTexto` devolve null tanto para texto ilegível quanto para
+    // valor acima do teto; separar aqui é o que permite a mensagem certa.
+    const semSeparador = Number.parseFloat(limpo.replace(/[.\s]/g, '').replace(',', '.'))
+    if (Number.isFinite(semSeparador) && Math.abs(semSeparador * 100) > LIMITE_CENTAVOS) {
+      return { ok: false, erro: 'acimaDoLimite' }
+    }
+    return { ok: false, erro: 'naoNumero' }
+  }
+  return { ok: true, centavos }
+}
+
 export function centavosDeTexto(texto: string): number | null {
   const limpo = texto.trim().replace(/\s/g, '')
   if (limpo === '') return null

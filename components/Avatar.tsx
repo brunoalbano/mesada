@@ -41,6 +41,8 @@ export function Avatar({
   className = 'h-12 w-12 text-3xl',
 }: {
   chave: string
+  /** Nome já traduzido. Antes ia a chave crua, e o leitor de tela em inglês
+   *  anunciava "gato", "urso", "leao". */
   nome: string
   className?: string
 }) {

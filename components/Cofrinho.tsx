@@ -28,15 +28,21 @@ export function Cofrinho({
   className,
 }: {
   estado?: EstadoCofrinho
-  rotulo: string
+  /** Sem rótulo, o desenho é decorativo e sai da árvore de acessibilidade.
+   *  Antes passava-se `""`, o que produzia `role="img"` com nome vazio: nem
+   *  anunciado nem escondido. */
+  rotulo?: string
   className?: string
 }) {
+  const decorativo = !rotulo
+
   return (
     <svg
       viewBox="0 0 96 96"
       className={className}
-      role="img"
-      aria-label={rotulo}
+      role={decorativo ? undefined : 'img'}
+      aria-hidden={decorativo || undefined}
+      aria-label={decorativo ? undefined : rotulo}
       xmlns="http://www.w3.org/2000/svg"
     >
       <ellipse cx="48" cy="62" rx="30" ry="24" className="fill-marca" />

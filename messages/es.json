@@ -112,7 +112,15 @@
     "metaJaExiste": "Ya hay una meta en curso.",
     "cancelarMeta": "Cancelar meta",
     "voltar": "Volver",
-    "lancado": "Listo, movimiento registrado."
+    "lancado": "Listo, movimiento registrado.",
+    "tipo": "¿Qué pasó?",
+    "icone": "Icono",
+    "valorExemplo": "0,00",
+    "entradaPalavra": "entrada",
+    "saidaPalavra": "salida",
+    "aindaMais": "Mostrando los {contagem} movimientos más recientes.",
+    "valorIlegivel": "No entendí ese monto. Usa coma para los centavos, como 12,50.",
+    "valorAlto": "Ese monto es demasiado alto. El máximo es 1.000.000,00."
   },
   "acesso": {
     "titulo": "Acceso de {nome}",
@@ -138,5 +146,31 @@
     "titulo": "La alcancía está durmiendo",
     "texto": "No pude hablar con el servidor ahora. Tu dinero está guardado; inténtalo de nuevo en un momento.",
     "tentarDeNovo": "Intentar de nuevo"
+  },
+  "avatares": {
+    "gato": "Gato",
+    "urso": "Oso",
+    "raposa": "Zorro",
+    "coelho": "Conejo",
+    "panda": "Panda",
+    "leao": "León",
+    "sapo": "Rana",
+    "pinguim": "Pingüino"
+  },
+  "modo": {
+    "pequeno": {
+      "adicionar": "Ganó",
+      "descontar": "Gastó",
+      "tipo": "¿Qué pasó?",
+      "historico": "Lo que pasó",
+      "meta": "Lo que quiero"
+    },
+    "grande": {
+      "adicionar": "Acreditar",
+      "descontar": "Debitar",
+      "tipo": "Tipo de movimiento",
+      "historico": "Historial",
+      "meta": "Meta"
+    }
   }
 }

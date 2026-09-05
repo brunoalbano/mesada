@@ -68,7 +68,7 @@ export default async function Familia({ params }: { params: Promise<{ id: string
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-5 py-8">
       <header className="flex items-center gap-3">
-        <Cofrinho estado="pouco" rotulo="" className="h-12 w-12 shrink-0" />
+        <Cofrinho estado="pouco" className="h-12 w-12 shrink-0" />
         <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{familia.name}</h1>
       </header>
 

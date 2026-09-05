@@ -14,7 +14,11 @@ import { defineConfig, devices } from '@playwright/test'
  * falham de formas que não parecem rede: cabeçalho `undefined`, página em
  * branco, tempo esgotado.
  */
-const proxy = process.env.HTTPS_PROXY ?? process.env.https_proxy
+// Só quando o alvo é remoto: com o servidor local em 127.0.0.1, mandar o
+// navegador pelo proxy corporativo faz toda navegação falhar.
+const proxy = process.env.BASE_URL
+  ? (process.env.HTTPS_PROXY ?? process.env.https_proxy)
+  : undefined
 
 export default defineConfig({
   testDir: './e2e',

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { clienteServidor } from '@/lib/supabase/server'
-import { centavosDeTexto } from '@/lib/money'
+import { lerCentavos } from '@/lib/money'
 import { gerarToken, hashParaBanco } from '@/lib/tokens'
 
 /**
@@ -17,7 +17,10 @@ import { gerarToken, hashParaBanco } from '@/lib/tokens'
 export type ResultadoLancamento =
   | null
   | { ok: true }
-  | { ok: false; erro: 'valor' | 'motivo' | 'arquivada' | 'falhou' }
+  | {
+      ok: false
+      erro: 'valor' | 'valorIlegivel' | 'valorAlto' | 'motivo' | 'arquivada' | 'falhou'
+    }
 
 const Lancamento = z.object({
   childId: z.string().uuid(),
@@ -46,8 +49,15 @@ export async function lancar(_anterior: unknown, dados: FormData): Promise<Resul
   })
   if (!entrada.success) return { ok: false, erro: 'motivo' }
 
-  const centavos = centavosDeTexto(String(dados.get('valor') ?? ''))
-  if (centavos === null || centavos <= 0) return { ok: false, erro: 'valor' }
+  const valor = lerCentavos(String(dados.get('valor') ?? ''))
+  if (!valor.ok) {
+    return {
+      ok: false,
+      erro: valor.erro === 'acimaDoLimite' ? 'valorAlto' : valor.erro === 'naoNumero' ? 'valorIlegivel' : 'valor',
+    }
+  }
+  if (valor.centavos <= 0) return { ok: false, erro: 'valor' }
+  const centavos = valor.centavos
 
   const supabase = await clienteServidor()
   const {
@@ -142,8 +152,9 @@ export async function criarMeta(_anterior: unknown, dados: FormData): Promise<Re
   })
   if (!entrada.success) return { ok: false, erro: 'invalido' }
 
-  const alvo = centavosDeTexto(String(dados.get('alvo') ?? ''))
-  if (alvo === null || alvo <= 0) return { ok: false, erro: 'invalido' }
+  const leitura = lerCentavos(String(dados.get('alvo') ?? ''))
+  if (!leitura.ok || leitura.centavos <= 0) return { ok: false, erro: 'invalido' }
+  const alvo = leitura.centavos
 
   const supabase = await clienteServidor()
   const {

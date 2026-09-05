@@ -20,7 +20,7 @@ export default function Erro({ error, reset }: { error: Error; reset: () => void
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-      <Cofrinho estado="vazio" rotulo="" className="h-24 w-24 opacity-60" />
+      <Cofrinho estado="vazio" className="h-24 w-24 opacity-60" />
       <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{t('titulo')}</h1>
       <p className="text-slate-600">{t('texto')}</p>
       <button

@@ -22,9 +22,14 @@ export function FormularioLancamento({
 }) {
   const t = useTranslations('crianca')
   const tComum = useTranslations('comum')
+  // Vocabulário por modo: "Ganhou/Gastou" para quem tem 6 anos, "Creditar/
+  // Debitar" para quem tem 15. A diferença fica no arquivo de mensagem, e
+  // não escondida numa condicional dentro do componente.
+  const tModo = useTranslations(pequeno ? 'modo.pequeno' : 'modo.grande')
   const [resultado, enviar, pendente] = useActionState(lancar, INICIAL)
   const [emoji, setEmoji] = useState<string>('💰')
   const [motivo, setMotivo] = useState('')
+  const [tipo, setTipo] = useState<'credito' | 'debito'>('credito')
 
   // Escolher um motivo já usado traz de volta o ícone daquela vez. Digitar o
   // mesmo texto à mão faz o mesmo: quem repete "Sorvete" não deveria ter que
@@ -79,23 +84,59 @@ export function FormularioLancamento({
       <MoedaCaindo chave={moedas} discreta={!pequeno} />
       <input type="hidden" name="childId" value={childId} />
       <input type="hidden" name="emoji" value={emoji} />
+      <input type="hidden" name="tipo" value={tipo} />
+
+      {/* Escolha antes do envio, com um único botão de submeter.
+          Antes eram dois botões `submit` no mesmo formulário, e a submissão
+          implícita usa o primeiro: quem digitava o valor e apertava Enter
+          creditava quando queria descontar. */}
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-base font-semibold text-slate-700">{tModo('tipo')}</legend>
+        <div role="radiogroup" aria-label={tModo('tipo')} className="flex gap-2">
+          {(['credito', 'debito'] as const).map((opcao) => {
+            const escolhido = tipo === opcao
+            return (
+              <button
+                key={opcao}
+                type="button"
+                role="radio"
+                aria-checked={escolhido}
+                onClick={() => setTipo(opcao)}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-bold ${
+                  escolhido
+                    ? opcao === 'credito'
+                      ? 'bg-entrada text-white'
+                      : 'bg-saida text-white'
+                    : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                {/* Sinal, palavra e cor juntos: nunca só a cor. */}
+                <span aria-hidden>{opcao === 'credito' ? '+' : '−'}</span>
+                {opcao === 'credito' ? tModo('adicionar') : tModo('descontar')}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
 
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-semibold text-slate-700">{t('valor')}</span>
+        <span className="text-base font-semibold text-slate-700">{t('valor')}</span>
         <input
           name="valor"
           required
+          aria-invalid={erro !== null}
+          aria-describedby={erro ? 'erro-lancamento' : undefined}
           // Teclado numérico no celular, mas campo de texto: `type=number`
           // recusa vírgula em parte dos navegadores, e vírgula é o separador
           // decimal em dois dos três idiomas.
           inputMode="decimal"
-          placeholder="0,00"
+          placeholder={t('valorExemplo')}
           className="min-h-14 rounded-2xl border-2 border-slate-200 px-4 text-2xl font-bold outline-none focus:border-marca"
         />
       </label>
 
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-semibold text-slate-700">{t('motivo')}</span>
+        <span className="text-base font-semibold text-slate-700">{t('motivo')}</span>
         <input
           name="motivo"
           required
@@ -123,7 +164,7 @@ export function FormularioLancamento({
               key={sugestao.motivo}
               type="button"
               onClick={() => usarMotivo(sugestao.motivo)}
-              className="flex min-h-12 items-center gap-2 rounded-2xl bg-slate-100 px-3 text-sm font-semibold text-slate-700"
+              className="flex min-h-12 items-center gap-2 rounded-2xl bg-slate-100 px-3 text-base font-semibold text-slate-700"
             >
               <span aria-hidden>{sugestao.emoji ?? '💬'}</span>
               {sugestao.motivo}
@@ -132,21 +173,32 @@ export function FormularioLancamento({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {MOTIVOS.map((opcao) => (
-          <button
-            key={opcao}
-            type="button"
-            aria-pressed={emoji === opcao}
-            onClick={() => setEmoji(opcao)}
-            className={`h-12 w-12 rounded-2xl text-2xl ${
-              emoji === opcao ? 'bg-marca-claro ring-2 ring-marca' : 'bg-slate-100'
-            }`}
-          >
-            {opcao}
-          </button>
-        ))}
-      </div>
+      {/* Escolha única, então radiogroup e não um punhado de alternadores:
+          `aria-pressed` anunciaria seis botões independentes, sem dizer que é
+          uma escolha só nem em que posição ela está. E o grupo precisa de
+          nome: antes eram seis emoji soltos entre dois campos. */}
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-base font-semibold text-slate-700">{t('icone')}</legend>
+        <div role="radiogroup" aria-label={t('icone')} className="flex flex-wrap gap-2">
+          {MOTIVOS.map((opcao) => (
+            <button
+              key={opcao}
+              type="button"
+              role="radio"
+              aria-checked={emoji === opcao}
+              aria-label={opcao}
+              onClick={() => setEmoji(opcao)}
+              className={`h-12 w-12 rounded-2xl text-2xl ${
+                emoji === opcao
+                  ? 'bg-marca-claro ring-2 ring-marca-escuro'
+                  : 'bg-slate-100 ring-1 ring-slate-200'
+              }`}
+            >
+              {opcao}
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       {erro && (
         <p id="erro-lancamento" role="alert" className="text-base font-semibold text-saida">
@@ -160,28 +212,15 @@ export function FormularioLancamento({
         </p>
       )}
 
-      <div className="flex gap-3">
-        {/* Entrada e saída nunca se distinguem só pela cor: cada botão traz
-            sinal, ícone e palavra. */}
-        <button
-          type="submit"
-          name="tipo"
-          value="credito"
-          disabled={pendente}
-          className="flex-1 rounded-2xl bg-entrada px-4 py-3 text-base font-bold text-white disabled:opacity-60"
-        >
-          + {t('adicionar')}
-        </button>
-        <button
-          type="submit"
-          name="tipo"
-          value="debito"
-          disabled={pendente}
-          className="flex-1 rounded-2xl bg-saida px-4 py-3 text-base font-bold text-white disabled:opacity-60"
-        >
-          − {t('descontar')}
-        </button>
-      </div>
+      <button
+        type="submit"
+        disabled={pendente}
+        className={`rounded-2xl px-5 py-3 text-base font-bold text-white disabled:opacity-60 ${
+          tipo === 'credito' ? 'bg-entrada' : 'bg-saida'
+        }`}
+      >
+        {pendente ? t('lancando') : tipo === 'credito' ? tModo('adicionar') : tModo('descontar')}
+      </button>
     </form>
   )
 }

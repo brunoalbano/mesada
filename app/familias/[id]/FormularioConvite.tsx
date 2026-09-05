@@ -42,7 +42,7 @@ export function FormularioConvite({
         <input type="hidden" name="familyId" value={familyId} />
 
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-semibold text-slate-700">{t('emailOpcional')}</span>
+          <span className="text-base font-semibold text-slate-700">{t('emailOpcional')}</span>
           <input
             name="email"
             type="email"
@@ -51,14 +51,16 @@ export function FormularioConvite({
           />
         </label>
 
-        <label className="flex items-center gap-3">
+        <label className="flex min-h-12 items-center gap-3">
           <input
             type="checkbox"
             name="papel"
             value="owner"
-            className="h-6 w-6 rounded border-2 border-slate-300"
+            // 24px era metade do alvo mínimo, num controle que decide se a
+            // pessoa convidada pode administrar a família.
+            className="h-7 w-7 rounded border-2 border-slate-400"
           />
-          <span className="text-sm font-semibold text-slate-700">{t('papel')}</span>
+          <span className="text-base font-semibold text-slate-700">{t('papel')}</span>
         </label>
 
         {erro && (
@@ -90,7 +92,7 @@ export function FormularioConvite({
             }}
             className="rounded-2xl bg-marca px-4 py-2 text-sm font-bold text-white"
           >
-            {copiado ? '✓' : 'Copiar'}
+            {copiado ? '✓' : tComum('copiar')}
           </button>
         </div>
       )}

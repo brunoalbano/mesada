@@ -104,7 +104,11 @@ export async function sairDaFamilia(_anterior: unknown, dados: FormData) {
   const { error } = await supabase.rpc('leave_family', { p_family_id: familyId.data })
 
   if (error) {
-    return { ok: false as const, erro: 'ultimoOwner' as const }
+    // `leave_family` também recusa sessão anônima e quem não pertence à
+    // família. Antes tudo virava "transfira a propriedade", inclusive erro de
+    // rede — mandando a pessoa resolver um problema que ela não tem.
+    const ultimoOwner = error.message.includes('transfira a propriedade')
+    return { ok: false as const, erro: ultimoOwner ? ('ultimoOwner' as const) : ('falhou' as const) }
   }
 
   revalidatePath('/')

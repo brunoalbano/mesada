@@ -3,13 +3,15 @@
 import { useTranslations } from 'next-intl'
 import { clienteNavegador } from '@/lib/supabase/client'
 import { Cofrinho } from '@/components/Cofrinho'
+import { BarraTopo } from '@/components/BarraTopo'
 
 export function EntrarParaAceitar() {
   const t = useTranslations('convite')
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-5 px-6 text-center">
-      <Cofrinho estado="pouco" rotulo="" className="h-20 w-20" />
+      <BarraTopo />
+      <Cofrinho estado="pouco" className="h-20 w-20" />
       <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{t('entrarTitulo')}</h1>
       <p className="text-slate-600">{t('entrarTexto')}</p>
       <button
