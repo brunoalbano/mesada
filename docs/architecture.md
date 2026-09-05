@@ -567,7 +567,9 @@ A resolução acontece no servidor, na primeira renderização, para que a pági
 - `manifest.webmanifest` por rota dinâmica, com ícones maskable, `display: standalone` e `theme_color`.
 - **`start_url` fixo**: `/` para o responsável, `/c/saldo` para a criança.
 - Service worker com Serwist: casco em cache; saldo, histórico e meta em *stale-while-revalidate*, para a criança abrir offline e ver o último estado, marcado com "atualizado às HH:MM".
-- **`/convite/*` na denylist de navegação do service worker**, para o token de convite nunca ser cacheado.
+- **`/convite/*` e `/auth/*` nunca passam pelo cache**, por regra `NetworkOnly` declarada **antes** do `defaultCache` — a primeira regra que casa é a que vale.
+
+  Duas camadas diferentes, e é fácil confundir: o `exclude` do `next.config.ts` tira as rotas do **precache**, e não do cache de **runtime**. O `defaultCache` do Serwist guarda navegações com NetworkFirst, então sem a regra explícita a resposta de `/convite/<token>` ficaria no CacheStorage indexada pelo caminho com o token.
 - Escrita é sempre online no MVP.
 - Onboarding ensina "adicionar à tela de início", com instrução por sistema.
 

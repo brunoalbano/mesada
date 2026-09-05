@@ -1,6 +1,6 @@
 import { defaultCache } from '@serwist/next/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { Serwist } from 'serwist'
+import { NetworkOnly, Serwist } from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -13,18 +13,28 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [
+    /**
+     * Precisa vir ANTES do defaultCache: a primeira regra que casa é a que
+     * vale.
+     *
+     * `/convite/*` carrega o token na URL, e `/auth/*` troca código por
+     * sessão. O `defaultCache` guarda navegações com NetworkFirst, então sem
+     * esta regra essas respostas ficariam no CacheStorage indexadas pelo
+     * caminho com o token — num tablet compartilhado, legíveis depois, e por
+     * XSS.
+     *
+     * O `exclude` do next.config.ts não cobre isto: ele tira as rotas do
+     * precache, e não do cache de runtime.
+     */
+    {
+      matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+        sameOrigin && /^\/(convite|auth)(\/|$)/.test(url.pathname),
+      handler: new NetworkOnly(),
+    },
+    ...defaultCache,
+  ],
 
-  /**
-   * Rotas que o service worker NUNCA intercepta.
-   *
-   * `/convite/*` carrega o token na URL. Interceptar guardaria essa resposta
-   * no CacheStorage indexada pelo caminho com o token — num tablet
-   * compartilhado, legível por qualquer um depois, e por XSS.
-   *
-   * `/auth/*` troca código por sessão; cache ali é resposta de autenticação
-   * guardada, que é a mesma classe de erro.
-   */
   navigationPreload: true,
 })
 

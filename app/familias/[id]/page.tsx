@@ -53,6 +53,18 @@ export default async function Familia({ params }: { params: Promise<{ id: string
     .order('archived_at', { ascending: true, nullsFirst: true })
     .order('created_at', { ascending: true })
 
+  // Saldo de cada criança na própria lista: sem isto o responsável precisa
+  // entrar em cada uma para responder "quanto cada um tem", que é a pergunta
+  // mais frequente da tela.
+  const { data: saldos } = await supabase
+    .from('child_balances')
+    .select('child_id, balance_cents')
+    .in('child_id', (criancas ?? []).map((c) => c.id))
+
+  const saldoPorCrianca = Object.fromEntries(
+    (saldos ?? []).map((s) => [s.child_id, s.balance_cents]),
+  )
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-5 py-8">
       <header className="flex items-center gap-3">
@@ -79,7 +91,12 @@ export default async function Familia({ params }: { params: Promise<{ id: string
         </ul>
       </section>
 
-      <ListaCriancas familyId={familia.id} criancas={criancas ?? []} />
+      <ListaCriancas
+        familyId={familia.id}
+        criancas={criancas ?? []}
+        saldos={saldoPorCrianca}
+        moeda={familia.currency}
+      />
 
       {souOwner && <FormularioConvite familyId={familia.id} convites={convites ?? []} />}
 

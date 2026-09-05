@@ -1,7 +1,8 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatarCentavos } from '@/lib/money'
 import { AVATARES, Avatar } from '@/components/Avatar'
 import { criarCrianca, type ResultadoCrianca } from './acoes'
 
@@ -12,11 +13,16 @@ type Crianca = { id: string; name: string; avatar_key: string; archived_at: stri
 export function ListaCriancas({
   familyId,
   criancas,
+  saldos,
+  moeda,
 }: {
   familyId: string
   criancas: Crianca[]
+  saldos: Record<string, number>
+  moeda: string
 }) {
   const t = useTranslations('criancas')
+  const idioma = useLocale()
   const tComum = useTranslations('comum')
   const [resultado, enviar, pendente] = useActionState(criarCrianca, INICIAL)
   const [avatar, setAvatar] = useState<string>(AVATARES[0])
@@ -52,7 +58,10 @@ export function ListaCriancas({
                     <span className="text-xs text-slate-500">{t('arquivada')}</span>
                   )}
                 </span>
-                <span aria-hidden className="text-2xl text-slate-300">
+                <span className="font-titulo font-bold text-marca-escuro">
+                  {formatarCentavos(saldos[crianca.id] ?? 0, idioma, moeda)}
+                </span>
+                <span aria-hidden className="text-xl text-slate-300">
                   ›
                 </span>
               </a>

@@ -95,7 +95,8 @@ A criança entra com **conta própria**: Google ou magic link. Não existe acess
 
 - Instalável em Android e iOS, com ícone próprio e tela de abertura.
 - Onboarding que ensina a adicionar à tela de início.
-- Leitura offline do último saldo, histórico e metas conhecidos, com carimbo de atualização.
+- Leitura offline do último saldo, histórico e meta conhecidos, pelo cache de navegação do service worker.
+- **Nunca em cache**: `/convite/*` e `/auth/*`. As duas carregam credencial na URL, e o cache de runtime guardaria a resposta indexada por esse caminho.
 
 ### 1.10 Fora do MVP, mas obrigatório junto com ele
 
