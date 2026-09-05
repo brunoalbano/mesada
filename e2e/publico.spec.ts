@@ -22,6 +22,13 @@ test.describe('português', () => {
     await expect(page.getByRole('button', { name: /receber link de acesso/i })).toBeVisible()
   })
 
+  test('a página de privacidade existe e responde no idioma do navegador', async ({ page }) => {
+    await page.goto('/privacidade')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    // Guardar dado de criança sem dizer o que se guarda não é opção.
+    await expect(page.getByRole('heading', { name: /o que guardamos/i })).toBeVisible()
+  })
+
   test('e-mail inválido não dispara requisição, e o erro é anunciado', async ({ page }) => {
     await page.goto('/entrar')
     await page.getByLabel(/seu e-mail/i).fill('nao-e-email')
@@ -79,4 +86,11 @@ test('cabeçalhos de segurança estão presentes', async ({ request }) => {
   expect(cabecalhos['referrer-policy']).toBe('no-referrer')
   expect(cabecalhos['x-content-type-options']).toBe('nosniff')
   expect(cabecalhos['x-frame-options']).toBe('DENY')
+
+  const csp = cabecalhos['content-security-policy'] ?? ''
+  // Exfiltração para domínio arbitrário é o que mais importa barrar aqui.
+  expect(csp).toContain("connect-src 'self'")
+  expect(csp).toContain("object-src 'none'")
+  expect(csp).toContain("frame-ancestors 'none'")
 })
+

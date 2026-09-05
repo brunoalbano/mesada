@@ -104,7 +104,7 @@ Itens sem os quais o MVP não pode ir ao ar:
 - Migrations SQL versionadas, com índices, RLS ligada nas nove tabelas, triggers de estorno e de meta, e o Custom Access Token Hook.
 - Backup semanal por GitHub Action, com restauração testada antes do lançamento. O plano gratuito do Supabase não tem backup nem PITR.
 - Dois ambientes: projeto Supabase de desenvolvimento e de produção, com migrations aplicadas em desenvolvimento antes de produção, e seed de dados fictícios.
-- Página de privacidade, exclusão de conta e transferência de `owner` ao sair da família.
+- Página de privacidade, exclusão de conta e transferência de administração — os três feitos.
 - Traduções completas em `pt`, `en` e `es`, com build falhando em chave faltante.
 - Testes de fluxo crítico: lançamento, estorno, meta alcançada, reabertura por estorno, isolamento entre famílias, convite de uso único, e claim cortada ao desvincular a conta.
 - GitHub Action que evita a pausa do projeto Supabase por inatividade.

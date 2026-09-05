@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { clienteServidor } from '@/lib/supabase/server'
 import { resolverIdioma } from '@/lib/i18n'
@@ -29,4 +30,30 @@ export async function criarFamilia(_anterior: unknown, dados: FormData): Promise
 
   revalidatePath('/')
   return { ok: true }
+}
+
+
+export type ResultadoExclusao = { ok: false; erro: 'temFamilia' | 'falhou' }
+
+/**
+ * Apaga a própria conta.
+ *
+ * A operação inteira vive numa função do banco: apagar de `auth.users` exige
+ * privilégio que a aplicação não tem, e não deve ter. A função recusa quem
+ * administra sozinho uma família com outras pessoas, e leva junto as famílias
+ * onde a pessoa estava só.
+ */
+export async function excluirConta(): Promise<ResultadoExclusao> {
+  const supabase = await clienteServidor()
+  const { error } = await supabase.rpc('delete_my_account')
+
+  if (error) {
+    const temFamilia = error.message.includes('transfira a administração')
+    return { ok: false, erro: temFamilia ? 'temFamilia' : 'falhou' }
+  }
+
+  // A sessão morreu junto com a conta; o middleware não tem mais o que
+  // renovar.
+  await supabase.auth.signOut()
+  redirect('/entrar')
 }

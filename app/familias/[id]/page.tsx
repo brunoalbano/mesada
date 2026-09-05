@@ -2,9 +2,11 @@ import { notFound, redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { clienteServidor } from '@/lib/supabase/server'
 import { Cofrinho } from '@/components/Cofrinho'
+import { BarraTopo } from '@/components/BarraTopo'
 import { FormularioConvite } from './FormularioConvite'
 import { BotaoSair } from './BotaoSair'
 import { ListaCriancas } from './ListaCriancas'
+import { ListaResponsaveis } from './ListaResponsaveis'
 
 export default async function Familia({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -67,29 +69,23 @@ export default async function Familia({ params }: { params: Promise<{ id: string
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-5 py-8">
+      <BarraTopo />
       <header className="flex items-center gap-3">
         <Cofrinho estado="pouco" className="h-12 w-12 shrink-0" />
         <h1 className="font-titulo text-2xl font-bold text-marca-escuro">{familia.name}</h1>
       </header>
 
-      <section className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm">
-        <h2 className="font-titulo text-lg font-bold">{t('responsaveis')}</h2>
-        <ul className="flex flex-col gap-2">
-          {(membros ?? []).map((membro) => {
-            const perfil = membro.profiles as unknown as { display_name: string } | null
-            return (
-              <li key={membro.user_id} className="flex items-center justify-between gap-2">
-                <span>{perfil?.display_name ?? '—'}</span>
-                {membro.role === 'owner' && (
-                  <span className="rounded-full bg-marca-claro px-3 py-1 text-xs font-bold text-marca-escuro">
-                    {t('papel')}
-                  </span>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      </section>
+      <ListaResponsaveis
+        familyId={familia.id}
+        souOwner={souOwner}
+        meuId={user.id}
+        membros={(membros ?? []).map((membro) => ({
+          userId: membro.user_id,
+          papel: membro.role,
+          nome:
+            (membro.profiles as unknown as { display_name: string } | null)?.display_name ?? '—',
+        }))}
+      />
 
       <ListaCriancas
         familyId={familia.id}

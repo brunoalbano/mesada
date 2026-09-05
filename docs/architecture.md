@@ -451,7 +451,9 @@ A interface mostra sempre de quem é a sessão, para que ninguém lance mesada a
 
 **Com a conta obrigatória, toda criança passa a ter e-mail cadastrado**, o que é mais dado pessoal de menor do que o desenho anterior guardava. A contrapartida é que a autenticação é a do Google, e não uma credencial nossa circulando por URL.
 
-**[R] Exclusão de conta e saída de família precisam existir.** `created_by` agora é anulável com `on delete set null`, e `created_by_name` guarda o snapshot da autoria, então apagar a conta é possível sem quebrar o razão imutável. Sair da família exige transferência de `owner` quando o último `owner` sai; a operação é bloqueada até haver outro.
+**Exclusão de conta e saída de família existem.** `public.delete_my_account()` é função `security definer`, porque apagar de `auth.users` exige privilégio que a aplicação não tem e não deve ter. Ela recusa quem administra sozinho uma família com outras pessoas, e apaga junto as famílias onde a pessoa estava só — sem membro nenhum, a família seria inalcançável para sempre.
+
+**[R] Detalhe do modelo que tornou isso possível:** `created_by` agora é anulável com `on delete set null`, e `created_by_name` guarda o snapshot da autoria, então apagar a conta é possível sem quebrar o razão imutável. Sair da família exige transferência de `owner` quando o último `owner` sai; a operação é bloqueada até haver outro.
 
 ---
 

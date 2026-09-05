@@ -1,9 +1,6 @@
 {
   "comum": {
     "sair": "Salir",
-    "salvar": "Guardar",
-    "cancelar": "Cancelar",
-    "carregando": "Cargando…",
     "erroInesperado": "Algo salió mal. Inténtalo de nuevo.",
     "copiar": "Copiar"
   },
@@ -69,7 +66,10 @@
     "semPermissao": "Solo quien administra la familia puede invitar.",
     "jaConvidado": "Ya hay una invitación pendiente para ese correo.",
     "sair": "Salir de la familia",
-    "ultimoOwner": "Pasa la administración a otra persona antes de salir."
+    "ultimoOwner": "Pasa la administración a otra persona antes de salir.",
+    "promover": "Hacer administrador",
+    "rebaixar": "Quitar administración",
+    "voce": "tú"
   },
   "criancas": {
     "titulo": "Niños",
@@ -172,5 +172,44 @@
       "historico": "Historial",
       "meta": "Meta"
     }
+  },
+  "privacidade": {
+    "titulo": "Privacidad",
+    "resumo": "Esta aplicación guarda datos de niños. Abajo está exactamente qué, por qué y cómo borrarlos.",
+    "guardamos": {
+      "titulo": "Qué guardamos",
+      "texto": "El apodo del niño, el animalito que eligió y la fecha de nacimiento si la indicas. Cada movimiento de mesada con monto, motivo y quién lo registró. Las metas. De los adultos: correo y nombre, que vienen de la cuenta con la que entras."
+    },
+    "naoGuardamos": {
+      "titulo": "Qué no guardamos",
+      "texto": "Ninguna foto. Ningún documento. Ningún dato bancario. Ninguna ubicación. La aplicación no mueve dinero real: los montos son un registro entre tú y tu hijo."
+    },
+    "quemVe": {
+      "titulo": "Quién lo ve",
+      "texto": "Solo los adultos de esa familia, y el propio niño cuando su cuenta está vinculada. Una familia nunca ve los datos de otra, y eso lo garantiza la base de datos, no solo la aplicación."
+    },
+    "quantoTempo": {
+      "titulo": "Por cuánto tiempo",
+      "texto": "Mientras la familia exista. Archivar a un niño conserva su historial; borrar la familia borra todo lo suyo, sin vuelta atrás."
+    },
+    "apagar": {
+      "titulo": "Cómo borrarlo",
+      "texto": "En la pantalla inicial, en Eliminar mi cuenta. Eso quita tu acceso, tu nombre y tu correo. Las familias donde estás solo se borran junto contigo, con sus niños y su historial. Si administras una familia con otras personas, transfiere la administración antes."
+    },
+    "terceiros": {
+      "titulo": "Quién más participa",
+      "texto": "La aplicación corre en Vercel y guarda los datos en Supabase. Entrar con Google significa que Google sabe que usas esta aplicación. No hay publicidad, seguimiento ni análisis de comportamiento."
+    },
+    "voltar": "Volver",
+    "link": "Privacidad"
+  },
+  "conta": {
+    "excluir": "Eliminar mi cuenta",
+    "excluindo": "Eliminando…",
+    "confirmarTitulo": "¿Eliminar la cuenta?",
+    "confirmarTexto": "Esto borra tu acceso, tu nombre y tu correo. Las familias donde estás solo se van contigo, con sus niños y todo el historial. No se puede deshacer.",
+    "confirmar": "Eliminar",
+    "manter": "Mantener cuenta",
+    "temFamilia": "Transfiere la administración de tus familias a otra persona antes."
   }
 }

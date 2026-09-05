@@ -527,6 +527,34 @@ begin;
 rollback;
 
 -- ===========================================================================
+-- Excluir a propria conta
+-- ===========================================================================
+begin;
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+  do $$ begin
+    perform test_ok(test_raises($q$ select public.delete_my_account() $q$, 'MS004'),
+      'unico owner de familia com outra pessoa nao exclui a conta');
+  end $$;
+rollback;
+
+-- Sozinho na propria familia: a conta sai, e a familia vai junto.
+begin;
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+  select public.delete_my_account();
+  -- As asserções leem auth.users, que a sessão de usuário não enxerga.
+  reset role;
+  do $$ begin
+    perform test_ok(not exists (select 1 from auth.users
+                                 where id = '33333333-3333-3333-3333-333333333333'),
+      'a conta e apagada de auth.users');
+    perform test_ok(not exists (select 1 from families where name = 'Familia B'),
+      'a familia onde a pessoa estava sozinha vai junto');
+  end $$;
+rollback;
+
+-- ===========================================================================
 -- 9. Sessao da crianca
 -- ===========================================================================
 begin;

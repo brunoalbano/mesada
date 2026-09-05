@@ -25,8 +25,32 @@ const config: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          // O token do link nunca deve vazar para terceiros pelo Referer.
+          // O token do convite nunca deve vazar para terceiros pelo Referer.
           { key: 'Referrer-Policy', value: 'no-referrer' },
+          {
+            // Encarece XSS, que é o cenário citado no desenho: script injetado
+            // lendo dado de família. `unsafe-inline` em script fica por
+            // enquanto — o Next injeta scripts inline sem nonce na
+            // renderização estática, e prometer proteção que não existe é
+            // pior do que declarar o buraco.
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob:",
+              "font-src 'self' data:",
+              // Só o próprio Supabase: sem isto, um script injetado exfiltra
+              // para qualquer domínio.
+              `connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''} wss://${
+                process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '') ?? ''
+              }`.trim(),
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+            ].join('; '),
+          },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
         ],

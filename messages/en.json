@@ -1,9 +1,6 @@
 {
   "comum": {
     "sair": "Sign out",
-    "salvar": "Save",
-    "cancelar": "Cancel",
-    "carregando": "Loading…",
     "erroInesperado": "Something went wrong. Please try again.",
     "copiar": "Copy"
   },
@@ -69,7 +66,10 @@
     "semPermissao": "Only a family manager can invite.",
     "jaConvidado": "There is already a pending invitation for that email.",
     "sair": "Leave family",
-    "ultimoOwner": "Hand management to someone else before leaving."
+    "ultimoOwner": "Hand management to someone else before leaving.",
+    "promover": "Make a manager",
+    "rebaixar": "Remove management",
+    "voce": "you"
   },
   "criancas": {
     "titulo": "Children",
@@ -172,5 +172,44 @@
       "historico": "History",
       "meta": "Goal"
     }
+  },
+  "privacidade": {
+    "titulo": "Privacy",
+    "resumo": "This app holds data about children. Below is exactly what, why, and how to erase it.",
+    "guardamos": {
+      "titulo": "What we keep",
+      "texto": "The child's nickname, the animal they picked, and their birthday if you provide one. Every allowance entry with its amount, reason and who posted it. The goals. For grown-ups: the email and name that come from the account you sign in with."
+    },
+    "naoGuardamos": {
+      "titulo": "What we don't keep",
+      "texto": "No photos. No documents. No banking details. No location. The app moves no real money: the amounts are a record between you and your child."
+    },
+    "quemVe": {
+      "titulo": "Who can see it",
+      "texto": "Only the grown-ups in that family, and the child once their account is linked. One family never sees another's data, and that is enforced by the database rather than by the app alone."
+    },
+    "quantoTempo": {
+      "titulo": "For how long",
+      "texto": "As long as the family exists. Archiving a child keeps their history; deleting the family erases everything of theirs, permanently."
+    },
+    "apagar": {
+      "titulo": "How to erase it",
+      "texto": "On the home screen, under Delete my account. That removes your access, your name and your email. Families where you are the only member are deleted with it, along with their children and history. If you manage a family with other people, hand over management first."
+    },
+    "terceiros": {
+      "titulo": "Who else is involved",
+      "texto": "The app runs on Vercel and stores data in Supabase. Signing in with Google means Google knows you use this app. There is no advertising, no tracking and no behavioural analytics."
+    },
+    "voltar": "Back",
+    "link": "Privacy"
+  },
+  "conta": {
+    "excluir": "Delete my account",
+    "excluindo": "Deleting…",
+    "confirmarTitulo": "Delete your account?",
+    "confirmarTexto": "This erases your access, your name and your email. Families where you are the only member go with it, along with their children and all history. This cannot be undone.",
+    "confirmar": "Delete",
+    "manter": "Keep account",
+    "temFamilia": "Hand management of your families to someone else first."
   }
 }

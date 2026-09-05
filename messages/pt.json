@@ -1,9 +1,6 @@
 {
   "comum": {
     "sair": "Sair",
-    "salvar": "Salvar",
-    "cancelar": "Cancelar",
-    "carregando": "Carregando…",
     "erroInesperado": "Algo deu errado. Tente de novo.",
     "copiar": "Copiar"
   },
@@ -69,7 +66,10 @@
     "semPermissao": "Só quem administra a família pode convidar.",
     "jaConvidado": "Já existe um convite pendente para esse e-mail.",
     "sair": "Sair da família",
-    "ultimoOwner": "Passe a administração para outra pessoa antes de sair."
+    "ultimoOwner": "Passe a administração para outra pessoa antes de sair.",
+    "promover": "Tornar administrador",
+    "rebaixar": "Remover administração",
+    "voce": "você"
   },
   "criancas": {
     "titulo": "Crianças",
@@ -172,5 +172,44 @@
       "historico": "Histórico",
       "meta": "Meta"
     }
+  },
+  "privacidade": {
+    "titulo": "Privacidade",
+    "resumo": "Este aplicativo guarda dados de crianças. O texto abaixo diz exatamente o quê, por quê, e como apagar.",
+    "guardamos": {
+      "titulo": "O que guardamos",
+      "texto": "O apelido da criança, o bichinho que ela escolheu, e a data de nascimento se você informar. Cada lançamento de mesada com valor, motivo e quem lançou. As metas. Dos responsáveis: e-mail e nome, vindos da conta usada para entrar."
+    },
+    "naoGuardamos": {
+      "titulo": "O que não guardamos",
+      "texto": "Nenhuma foto. Nenhum documento. Nenhum dado bancário. Nenhuma localização. O aplicativo não movimenta dinheiro de verdade: os valores são um registro entre você e seu filho."
+    },
+    "quemVe": {
+      "titulo": "Quem vê",
+      "texto": "Só os responsáveis daquela família, e a própria criança quando tem conta ligada ao perfil. Uma família nunca enxerga dados de outra, e isso é garantido pelo banco de dados, não apenas pelo aplicativo."
+    },
+    "quantoTempo": {
+      "titulo": "Por quanto tempo",
+      "texto": "Enquanto a família existir. Arquivar uma criança preserva o histórico; apagar a família apaga tudo dela, sem volta."
+    },
+    "apagar": {
+      "titulo": "Como apagar",
+      "texto": "Na tela inicial, em Excluir minha conta. Isso remove seu acesso, seu nome e seu e-mail. As famílias em que você está sozinho são apagadas junto, com as crianças e o histórico delas. Se você administra uma família com outras pessoas, transfira a administração antes."
+    },
+    "terceiros": {
+      "titulo": "Quem mais participa",
+      "texto": "O aplicativo roda na Vercel e guarda os dados no Supabase. Entrar pelo Google significa que o Google sabe que você usa este aplicativo. Não há publicidade, rastreamento nem análise de comportamento."
+    },
+    "voltar": "Voltar",
+    "link": "Privacidade"
+  },
+  "conta": {
+    "excluir": "Excluir minha conta",
+    "excluindo": "Excluindo…",
+    "confirmarTitulo": "Excluir a conta?",
+    "confirmarTexto": "Isso apaga seu acesso, seu nome e seu e-mail. As famílias em que você está sozinho vão junto, com as crianças e todo o histórico. Não tem como desfazer.",
+    "confirmar": "Excluir",
+    "manter": "Manter conta",
+    "temFamilia": "Passe a administração das suas famílias para outra pessoa antes."
   }
 }

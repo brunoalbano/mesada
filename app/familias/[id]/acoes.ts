@@ -193,3 +193,43 @@ export async function desarquivarCrianca(dados: FormData): Promise<void> {
   revalidatePath(`/familias/${familyId.data}`)
   revalidatePath(`/criancas/${id.data}`)
 }
+
+
+/**
+ * Passa a administração para outro responsável.
+ *
+ * Sem isto o último `owner` ficava preso: a mensagem mandava transferir, e
+ * não existia onde. A policy permite a um owner editar `family_members`, e a
+ * autoria da linha não muda — só o papel.
+ */
+export async function promoverResponsavel(
+  dados: FormData,
+): Promise<void> {
+  const familyId = z.string().uuid().safeParse(dados.get('familyId'))
+  const userId = z.string().uuid().safeParse(dados.get('userId'))
+  if (!familyId.success || !userId.success) return
+
+  const supabase = await clienteServidor()
+  await supabase
+    .from('family_members')
+    .update({ role: 'owner' })
+    .eq('family_id', familyId.data)
+    .eq('user_id', userId.data)
+
+  revalidatePath(`/familias/${familyId.data}`)
+}
+
+export async function rebaixarResponsavel(dados: FormData): Promise<void> {
+  const familyId = z.string().uuid().safeParse(dados.get('familyId'))
+  const userId = z.string().uuid().safeParse(dados.get('userId'))
+  if (!familyId.success || !userId.success) return
+
+  const supabase = await clienteServidor()
+  await supabase
+    .from('family_members')
+    .update({ role: 'parent' })
+    .eq('family_id', familyId.data)
+    .eq('user_id', userId.data)
+
+  revalidatePath(`/familias/${familyId.data}`)
+}

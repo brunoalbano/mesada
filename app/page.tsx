@@ -6,6 +6,7 @@ import { FormularioFamilia } from './FormularioFamilia'
 import { SeletorIdioma } from './SeletorIdioma'
 import { Sair } from './Sair'
 import { ConviteInstalacao } from '@/components/ConviteInstalacao'
+import { ExcluirConta } from './ExcluirConta'
 
 /** Lê `child_id` do JWT só para decidir a navegação; quem autoriza é a RLS. */
 function lerChildId(token: string): string | null {
@@ -37,6 +38,7 @@ export default async function Familias() {
   if (session && lerChildId(session.access_token)) redirect('/c/saldo')
 
   const t = await getTranslations('familias')
+  const tPrivacidade = await getTranslations('privacidade')
 
   // A RLS já limita o resultado às famílias das quais este responsável
   // participa; não há filtro por family_id no código, de propósito.
@@ -91,6 +93,13 @@ export default async function Familias() {
       <FormularioFamilia />
 
       <ConviteInstalacao />
+
+      <footer className="flex flex-col gap-3 pt-4">
+        <a href="/privacidade" className="botao text-center text-base font-semibold text-marca-escuro underline">
+          {tPrivacidade('link')}
+        </a>
+        <ExcluirConta />
+      </footer>
     </main>
   )
 }
